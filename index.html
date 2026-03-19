@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2PSR English Reading Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- เพิ่ม Chart.js สำหรับแสดงกราฟ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f0fdfa; }
+        .view { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .clickable-word { cursor: pointer; transition: all 0.2s; border-bottom: 1px dashed #cbd5e1; }
+        .clickable-word:hover { background-color: #e0f2fe; color: #0284c7; border-bottom-color: #0284c7; }
+        
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #0284c7; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm px-4 md:px-6 py-3 flex justify-between items-center fixed w-full top-0 z-50">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="if(currentUser && currentUser.role==='student') navigate('storybook')">
+            <div class="bg-sky-600 text-white p-2 rounded-lg">
+                <i data-lucide="book-open"></i>
+            </div>
+            <h1 class="text-xl font-bold text-sky-700">2PSR <span class="text-slate-500 font-medium text-sm hidden sm:inline">AI Learning</span></h1>
+        </div>
+        
+        <!-- Student Nav Items -->
+        <div id="student-nav" class="hidden flex items-center gap-3 md:gap-6">
+            <button onclick="navigate('progress')" class="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-sky-600 transition">
+                <i data-lucide="line-chart" class="w-4 h-4"></i> <span class="hidden md:inline">ความก้าวหน้า</span>
+            </button>
+            <div class="h-8 w-px bg-slate-200"></div>
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p id="nav-student-name" class="font-semibold text-sm text-slate-700"></p>
+                    <p id="nav-student-id" class="text-xs text-slate-500"></p>
+                </div>
+                <div class="h-10 w-10 bg-sky-100 rounded-full flex items-center justify-center text-sky-700 font-bold border border-sky-200">
+                    <i data-lucide="user"></i>
+                </div>
+                <button onclick="openStudentProfileModal()" class="text-slate-400 hover:text-sky-600 transition ml-2" title="แก้ไขข้อมูลส่วนตัว"><i data-lucide="settings"></i></button>
+                <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition ml-2" title="ออกจากระบบ"><i data-lucide="log-out"></i></button>
+            </div>
+        </div>
+
+        <!-- Teacher Nav Items -->
+        <div id="teacher-nav" class="hidden flex items-center gap-4">
+            <div class="text-right hidden sm:block">
+                <p class="font-semibold text-sm text-indigo-700">ระบบจัดการผู้สอน</p>
+                <p class="text-xs text-slate-500">Teacher Portal</p>
+            </div>
+            <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition ml-2"><i data-lucide="log-out"></i></button>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-4 max-w-6xl mx-auto min-h-screen">
+
+        <!-- 1. LOGIN VIEW -->
+        <div id="view-login" class="view active max-w-md mx-auto mt-10">
+            <!-- Toggle Login Type -->
+            <div class="flex justify-center mb-6 bg-slate-100 p-1 rounded-xl">
+                <button onclick="toggleLoginType('student')" id="btn-login-student" class="flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow text-sky-600 transition">นักเรียน</button>
+                <button onclick="toggleLoginType('teacher')" id="btn-login-teacher" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition">ครูผู้สอน</button>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 transition-all" id="login-box">
+                <div class="text-center mb-8">
+                    <div id="login-icon-container" class="h-16 w-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4 text-sky-600 transition-colors">
+                        <i data-lucide="graduation-cap" id="login-icon" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800" id="login-title">เข้าสู่ระบบนักเรียน</h2>
+                    <p class="text-slate-500 mt-1" id="login-subtitle">โรงเรียนน้ำพองศึกษา</p>
+                </div>
+                
+                <form id="login-form" class="space-y-5" onsubmit="handleLogin(event)">
+                    <div>
+                        <label id="label-username" class="block text-sm font-medium text-slate-700 mb-1">เลขประจำตัวนักเรียน (5 หลัก)</label>
+                        <input type="text" id="username" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none" placeholder="เช่น 12345" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน</label>
+                        <input type="password" id="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none" placeholder="ค่าเริ่มต้นคือ 12345678" required>
+                    </div>
+                    <button type="submit" id="login-submit-btn" class="w-full bg-sky-600 text-white py-3 rounded-xl hover:bg-sky-700 transition font-semibold shadow flex justify-center items-center gap-2">
+                        เข้าสู่ระบบ <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. TEACHER DASHBOARD VIEW -->
+        <div id="view-teacher" class="view">
+            <div class="mb-6 flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-800">Teacher Dashboard</h2>
+                    <p class="text-slate-500 mt-1">ระบบจัดการห้องเรียนและติดตามความก้าวหน้า</p>
+                </div>
+            </div>
+
+            <!-- Teacher Tabs -->
+            <div class="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto">
+                <button onclick="switchTeacherTab('dash')" id="tab-btn-dash" class="px-6 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 transition whitespace-nowrap">ภาพรวม (Dashboard)</button>
+                <button onclick="switchTeacherTab('students')" id="tab-btn-students" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent hover:border-indigo-300 transition whitespace-nowrap">ความก้าวหน้านักเรียน</button>
+                <button onclick="switchTeacherTab('content')" id="tab-btn-content" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent hover:border-indigo-300 transition whitespace-nowrap">จัดการคลังบทอ่าน</button>
+            </div>
+
+            <!-- Tab 1: Dashboard -->
+            <div id="t-tab-dash" class="teacher-tab-content block">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg text-slate-800">สถิติภาพรวม (Overview)</h3>
+                    <select id="dash-room-filter" onchange="updateDashboardStats()" class="p-2 border rounded-lg outline-none focus:border-indigo-500 text-sm bg-white shadow-sm font-medium text-slate-700">
+                        <option value="all">นักเรียนทั้งหมด</option>
+                        <!-- Options จะถูกสร้างอัตโนมัติ -->
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 transition hover:shadow-md">
+                        <div class="bg-blue-100 p-4 rounded-full text-blue-600"><i data-lucide="users" class="w-8 h-8"></i></div>
+                        <div><p class="text-slate-500 text-sm">จำนวนนักเรียน</p><p class="text-2xl font-bold text-slate-800"><span id="total-students-count">0</span> คน</p></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 transition hover:shadow-md">
+                        <div class="bg-emerald-100 p-4 rounded-full text-emerald-600"><i data-lucide="book-check" class="w-8 h-8"></i></div>
+                        <div><p class="text-slate-500 text-sm">เรื่องที่อ่านจบแล้วรวม</p><p class="text-2xl font-bold text-slate-800"><span id="dash-reads-count">0</span> ครั้ง</p></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 transition hover:shadow-md">
+                        <div class="bg-purple-100 p-4 rounded-full text-purple-600"><i data-lucide="brain-circuit" class="w-8 h-8"></i></div>
+                        <div><p class="text-slate-500 text-sm">การใช้ AI Scaffolding</p><p class="text-2xl font-bold text-slate-800"><span id="dash-ai-count">0</span> ครั้ง</p></div>
+                    </div>
+                </div>
+
+                <!-- ส่วนของกราฟประมวลผล -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+                    <h3 class="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="pie-chart" class="text-indigo-600 w-5 h-5"></i> การประมวลผลเชิงสถิติ (Analytics)</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        
+                        <!-- กราฟ 1: สัดส่วนเป้าหมาย -->
+                        <div class="border border-slate-100 bg-slate-50 rounded-xl p-5">
+                            <h4 class="text-center font-bold text-slate-700 mb-1 text-sm">สัดส่วนเป้าหมายหลัก (SRL Goals)</h4>
+                            <p class="text-xs text-center text-slate-500 mb-4">(นักเรียนสามารถเลือกได้มากกว่า 1 ข้อ)</p>
+                            <div class="relative h-64 w-full">
+                                <canvas id="goalChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- กราฟ 2: ช่วงคะแนนเฉลี่ย -->
+                        <div class="border border-slate-100 bg-slate-50 rounded-xl p-5">
+                            <h4 class="text-center font-bold text-slate-700 mb-4 text-sm">การกระจายตัวของคะแนนเฉลี่ยแบบประเมิน</h4>
+                            <div class="relative h-64 w-full">
+                                <canvas id="scoreChart"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- วิเคราะห์ความนิยมของเนื้อหา -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+                    <h3 class="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-indigo-600 w-5 h-5"></i> วิเคราะห์ความนิยมเนื้อหา (Content Popularity)</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        
+                        <!-- ตารางหมวดหมู่ -->
+                        <div class="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                            <div class="bg-indigo-50 p-4 border-b border-indigo-100 font-bold text-indigo-800 text-sm flex justify-between items-center">
+                                <span>ความนิยมรายหมวดหมู่</span>
+                                <span class="text-xs font-normal text-indigo-600 bg-indigo-100 px-2 py-1 rounded">เทียบจากนักเรียนทั้งหมด</span>
+                            </div>
+                            <div class="max-h-[320px] overflow-y-auto">
+                                <table class="w-full text-left text-sm">
+                                    <tbody id="dash-cat-popularity" class="divide-y divide-slate-100">
+                                        <!-- Injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- ตารางบทอ่าน Top 10 -->
+                        <div class="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                            <div class="bg-sky-50 p-4 border-b border-sky-100 font-bold text-sky-800 text-sm flex justify-between items-center">
+                                <span>ความนิยมรายบทอ่าน (Top 10)</span>
+                                <span class="text-xs font-normal text-sky-600 bg-sky-100 px-2 py-1 rounded">เรียงตามยอดอ่าน</span>
+                            </div>
+                            <div class="max-h-[320px] overflow-y-auto">
+                                <table class="w-full text-left text-sm">
+                                    <tbody id="dash-story-popularity" class="divide-y divide-slate-100">
+                                        <!-- Injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Students Progress -->
+            <div id="t-tab-students" class="teacher-tab-content hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <label class="font-medium text-slate-700">เลือกห้องเรียน:</label>
+                            <select id="teacher-room-filter" onchange="renderTeacherStudents()" class="p-2 border rounded-lg outline-none focus:border-indigo-500 text-sm bg-slate-50">
+                                <option value="all">ดูทั้งหมด</option>
+                            </select>
+                            
+                            <!-- ปุ่มจัดการทั้งห้อง -->
+                            <div id="room-actions-group" class="hidden flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
+                                <button onclick="resetRoomGoals()" type="button" class="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition flex items-center gap-1" title="รีเซตเป้าหมายทุกคนในห้องนี้">
+                                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> รีเซตเป้าหมาย
+                                </button>
+                                <button onclick="deleteRoom()" type="button" class="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition flex items-center gap-1" title="ลบข้อมูลนักเรียนทุกคนในห้องนี้">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i> ลบทั้งห้อง
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 w-full md:w-auto flex-wrap justify-end">
+                            <button onclick="openAddStudentModal()" type="button" class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-indigo-100 transition">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> เพิ่ม 1 คน
+                            </button>
+                            <div class="relative group">
+                                <label for="import-excel" class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-emerald-100 cursor-pointer transition">
+                                    <i data-lucide="upload" class="w-4 h-4"></i> นำเข้านักเรียน (Excel)
+                                </label>
+                                <input type="file" id="import-excel" accept=".xlsx, .xls, .csv" class="hidden" onchange="importStudentsMock(this)">
+                                <div class="absolute right-0 top-full mt-1 hidden group-hover:block w-48 bg-white text-xs border p-2 rounded shadow-lg text-slate-500 z-10">
+                                    อัปโหลดไฟล์รายชื่อนักเรียน <br>
+                                    <a href="#" onclick="downloadTemplate(event)" class="text-indigo-600 hover:underline mt-1 inline-block"><i data-lucide="download" class="w-3 h-3 inline"></i> ดาวน์โหลดไฟล์ตัวอย่าง</a>
+                                </div>
+                            </div>
+                            <button onclick="exportToExcel()" type="button" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-indigo-700 transition shadow">
+                                <i data-lucide="download-cloud" class="w-4 h-4"></i> ส่งออกความก้าวหน้า
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
+                                    <th class="p-3 font-medium">ห้อง</th>
+                                    <th class="p-3 font-medium text-center">เลขที่</th>
+                                    <th class="p-3 font-medium">รหัส/ชื่อ</th>
+                                    <th class="p-3 font-medium">เป้าหมายหลัก (ที่นักเรียนเลือก)</th>
+                                    <th class="p-3 font-medium text-center">อ่านแล้ว</th>
+                                    <th class="p-3 font-medium text-center">คะแนนเฉลี่ย</th>
+                                    <th class="p-3 font-medium text-center w-28">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacher-students-list" class="text-sm divide-y divide-slate-100">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Content Management -->
+            <div id="t-tab-content" class="teacher-tab-content hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                    <div class="flex items-start gap-4 mb-6">
+                        <div class="bg-indigo-100 text-indigo-600 p-3 rounded-xl"><i data-lucide="wand-2" class="w-8 h-8"></i></div>
+                        <div>
+                            <h3 class="font-bold text-xl text-slate-800">ระบบคัดเลือกบทอ่านอัจฉริยะ (AI Story Scraper)</h3>
+                            <p class="text-sm text-slate-500 mt-1">ให้ AI ไปดึงเนื้อหาจากเว็บไซต์ที่คุณต้องการ แล้วนำมาปรับระดับภาษาให้เหมาะสม เข้าสู่ระบบอัตโนมัติ</p>
+                        </div>
+                    </div>
+
+                    <form id="extract-form" onsubmit="extractStoriesMock(event)" class="space-y-5 bg-slate-50 p-6 rounded-xl border border-slate-100">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">1. ลิงก์เว็บไซต์ต้นทาง (URL)</label>
+                            <input type="url" id="extract-url" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="เช่น https://learnenglishteens.britishcouncil.org/..." required>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">2. หมวดหมู่ที่จะนำเข้า</label>
+                                <select id="extract-cat" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                                    <option value="c1">My Digital Life</option>
+                                    <option value="c2">Hobbies</option>
+                                    <option value="c3">Environment Around Us</option>
+                                    <option value="c4">Daily News</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">3. จำนวนเรื่องที่ต้องการสกัด</label>
+                                <input type="number" id="extract-num" min="1" max="20" value="5" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                            </div>
+                        </div>
+                        <div class="pt-2">
+                            <button type="submit" id="extract-btn" class="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition font-semibold shadow-md flex items-center justify-center gap-2 w-full md:w-auto">
+                                <i data-lucide="cpu" class="w-5 h-5"></i> เริ่มดึงข้อมูลและสร้างเนื้อหา (Extract & Generate)
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-10 pt-8 border-t border-slate-200">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-800">คลังบทอ่านปัจจุบัน (Current Stories)</h3>
+                                <p class="text-sm text-slate-500">รวมทั้งหมด <span id="teacher-story-count" class="font-bold text-indigo-600">0</span> เรื่อง</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-[600px] overflow-y-auto">
+                            <table class="w-full text-left border-collapse min-w-[800px]">
+                                <thead class="sticky top-0 bg-white shadow-sm z-10">
+                                    <tr class="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
+                                        <th class="p-3 font-medium w-16 text-center">ปก</th>
+                                        <th class="p-3 font-medium">หมวดหมู่</th>
+                                        <th class="p-3 font-medium">ชื่อเรื่อง</th>
+                                        <th class="p-3 font-medium text-center">สถานะ</th>
+                                        <th class="p-3 font-medium text-center w-28">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teacher-stories-list" class="text-sm divide-y divide-slate-100">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. STUDENT GOAL SETTING (P - Planning) -->
+        <div id="view-goal" class="view max-w-2xl mx-auto mt-6">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-2 h-full bg-sky-500"></div>
+                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2 mb-2">
+                    <i data-lucide="target" class="text-sky-500"></i> ขั้นที่ 1: การตั้งเป้าหมาย (Planning)
+                </h2>
+                <p class="text-slate-600 mb-6">ยินดีต้อนรับเข้าสู่ระบบครั้งแรก! กรุณากำหนดเป้าหมายการเรียนรู้ของคุณ</p>
+                
+                <form id="goal-form" onsubmit="saveGoals(event)" class="space-y-6">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <label class="block font-medium text-slate-800 mb-1">1. เป้าหมายหลักในการอ่านของคุณคืออะไร?</label>
+                        <p class="text-sm text-sky-600 mb-4">(สามารถเลือกได้มากกว่า 1 ข้อ)</p>
+                        <div class="space-y-3" id="goal-checkboxes">
+                            <label class="flex items-start gap-3 p-3 bg-white border rounded-lg cursor-pointer hover:border-sky-400 transition">
+                                <input type="checkbox" name="mainGoal" value="จับใจความ" class="text-sky-600 w-5 h-5 mt-0.5 focus:ring-sky-500 rounded">
+                                <span class="text-sm text-slate-700">ฉันจะตั้งใจจับใจความสำคัญ เพื่อให้ทำแบบทดสอบท้ายเรื่องผ่านเกณฑ์</span>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 bg-white border rounded-lg cursor-pointer hover:border-sky-400 transition">
+                                <input type="checkbox" name="mainGoal" value="เดาศัพท์" class="text-sky-600 w-5 h-5 mt-0.5 focus:ring-sky-500 rounded">
+                                <span class="text-sm text-slate-700">ฉันจะฝึกเดาความหมายคำศัพท์ใหม่ๆ จากบริบท โดยอาศัยแค่คำใบ้จาก AI</span>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 bg-white border rounded-lg cursor-pointer hover:border-sky-400 transition">
+                                <input type="checkbox" name="mainGoal" value="วิเคราะห์" class="text-sky-600 w-5 h-5 mt-0.5 focus:ring-sky-500 rounded">
+                                <span class="text-sm text-slate-700">ฉันจะวิเคราะห์เนื้อเรื่อง เพื่อนำไปเขียนสรุปใจความและข้อคิดด้วยภาษาของฉันเอง</span>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 bg-white border rounded-lg cursor-pointer hover:border-sky-400 transition">
+                                <input type="checkbox" name="mainGoal" value="สร้างวินัย" class="text-sky-600 w-5 h-5 mt-0.5 focus:ring-sky-500 rounded">
+                                <span class="text-sm text-slate-700">ฉันจะอ่านเพื่อความสนุก สะสมคำศัพท์ และสร้างวินัยการอ่านอย่างต่อเนื่อง</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                            <label class="block font-medium text-slate-800 mb-2">2. จำนวนหมวดหมู่ที่จะอ่าน</label>
+                            <select id="catGoal" class="w-full p-2 border rounded-lg outline-none focus:border-sky-500">
+                                <option value="2">2 หมวดหมู่</option>
+                                <option value="3" selected>3 หมวดหมู่</option>
+                                <option value="4">4 หมวดหมู่</option>
+                            </select>
+                        </div>
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                            <label class="block font-medium text-slate-800 mb-2">3. จำนวนเรื่องต่อหมวดหมู่</label>
+                            <select id="storyGoal" class="w-full p-2 border rounded-lg outline-none focus:border-sky-500">
+                                <option value="2">2 เรื่อง</option>
+                                <option value="3">3 เรื่อง</option>
+                                <option value="4">4 เรื่อง</option>
+                                <option value="5">5 เรื่อง</option>
+                                <option value="6">6 เรื่อง</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl hover:bg-emerald-700 transition font-semibold shadow-md flex justify-center items-center gap-2">
+                        <i data-lucide="save" class="w-5 h-5"></i> บันทึกเป้าหมายและไปที่ชั้นหนังสือ
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. STORYBOOK VIEW -->
+        <div id="view-storybook" class="view">
+            <div class="flex flex-col md:flex-row justify-between md:items-end mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-800">ชั้นหนังสือดิจิทัล (Storybook)</h2>
+                    <p class="text-slate-500 mt-2">คลังบทอ่านกว่า 80 เรื่อง (A1-B2) เลือกบทอ่านที่คุณสนใจ เพื่อเริ่มเรียนรู้อย่างอิสระ</p>
+                </div>
+                <div class="bg-white px-5 py-3 rounded-xl border border-sky-100 shadow-sm text-sm">
+                    <p class="text-slate-500 text-xs mb-1">เป้าหมายปัจจุบันของคุณ:</p>
+                    <strong id="display-goal" class="text-sky-700 text-base block mt-1 leading-tight"></strong>
+                </div>
+            </div>
+
+            <div id="categories-container" class="space-y-10">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- 5. READING & SCAFFOLDING VIEW (P&S) -->
+        <div id="view-reading" class="view">
+            <!-- Navigation Action Bar -->
+            <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                <button onclick="navigate('storybook')" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 flex items-center gap-2 transition font-medium text-sm">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> ย้อนกลับ (Back)
+                </button>
+                <div class="text-sm font-bold text-sky-600" id="read-category-header"></div>
+                <button onclick="startQuiz()" class="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 flex items-center gap-2 transition font-medium text-sm">
+                    ทำแบบประเมิน (Next) <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- ซ้าย: บทความ -->
+                <div class="lg:w-2/3 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                    <div class="h-64 w-full bg-slate-200 relative">
+                        <img id="read-cover" src="" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
+                            <div>
+                                <h2 id="read-title" class="text-3xl font-bold text-white mb-2"></h2>
+                                <span id="read-level-badge" class="flex items-center gap-1 text-sm font-semibold"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-8 md:p-10">
+                        <div class="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 mb-6">
+                            <i data-lucide="info" class="w-5 h-5 flex-shrink-0"></i> 
+                            <span>เคล็ดลับ 2PSR: หากไม่รู้ความหมายคำศัพท์ ห้ามเปิดแปลภาษา! ให้ <b>คลิกที่คำศัพท์</b> เพื่อให้ AI ช่วยใบ้คำ (Scaffolding Hint)</span>
+                        </div>
+                        
+                        <div id="read-content" class="text-lg leading-loose text-slate-700 font-medium space-y-4">
+                            <!-- Content injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ขวา: AI Chatbot -->
+                <div class="lg:w-1/3 flex flex-col h-[700px] bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden sticky top-24">
+                    <div class="bg-sky-600 text-white p-4 flex items-center gap-3">
+                        <div class="bg-white/20 p-2 rounded-lg"><i data-lucide="bot" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-bold">AI Scaffolding</h3>
+                            <p class="text-xs text-sky-100">ผู้ช่วยใบ้คำและกระตุ้นการคิด</p>
+                        </div>
+                    </div>
+                    
+                    <div id="chat-history" class="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50"></div>
+
+                    <div class="p-3 bg-white border-t">
+                        <form id="chat-form" onsubmit="handleChat(event)" class="flex gap-2">
+                            <input type="text" id="chat-input" class="flex-1 px-3 py-2 bg-slate-100 border-transparent focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 rounded-xl text-sm outline-none transition" placeholder="พิมพ์ถามคำศัพท์ที่นี่...">
+                            <button type="submit" class="bg-sky-600 text-white p-2 rounded-xl hover:bg-sky-700 transition"><i data-lucide="send" class="w-5 h-5"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. QUIZ & REFLECTION (R) -->
+        <div id="view-quiz" class="view max-w-3xl mx-auto">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+                <h2 class="text-2xl font-bold text-indigo-700 flex items-center gap-2 mb-2">
+                    <i data-lucide="clipboard-check"></i> ขั้นที่ 3: แบบประเมินและสะท้อนคิด
+                </h2>
+                <p class="text-slate-500 mb-6 pb-6 border-b">เรื่อง: <span id="quiz-title-display" class="font-semibold text-slate-700"></span></p>
+
+                <form id="quiz-form" onsubmit="submitQuiz(event)">
+                    <div id="mcq-container" class="space-y-6 mb-8"></div>
+
+                    <div class="bg-sky-50 p-6 rounded-xl border border-sky-100 mb-6">
+                        <h3 class="font-bold text-sky-800 mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-5 h-5"></i> สรุปใจความสำคัญ (Story Summary)</h3>
+                        <p class="text-sm text-sky-700 mb-3">ให้นักเรียนเขียนสรุปเนื้อเรื่องที่อ่านด้วยภาษาของตนเองสั้นๆ (1-3 ประโยค)</p>
+                        <textarea id="summary-input" rows="3" class="w-full p-3 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none text-sm" placeholder="พิมพ์สรุปเนื้อเรื่องที่นี่..." required></textarea>
+                    </div>
+
+                    <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 mb-8">
+                        <h3 class="font-bold text-indigo-800 mb-3 flex items-center gap-2"><i data-lucide="message-square-plus" class="w-5 h-5"></i> คำถามสะท้อนคิด (Self-Reflection)</h3>
+                        <p class="text-sm text-indigo-700 mb-3" id="reflection-prompt">จากเป้าหมายที่ตั้งไว้ นักเรียนบรรลุเป้าหมายหรือไม่? พบปัญหาอะไร และคราวหน้าจะแก้ปัญหาอย่างไร?</p>
+                        <textarea id="reflection-input" rows="4" class="w-full p-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="พิมพ์สะท้อนความคิด..." required></textarea>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button type="button" onclick="navigate('reading')" class="w-1/3 bg-slate-200 text-slate-700 py-3 rounded-xl hover:bg-slate-300 transition font-semibold">กลับไปอ่านบทความ</button>
+                        <button type="submit" id="submit-quiz-btn" class="w-2/3 bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold shadow-md flex justify-center items-center gap-2">
+                            <span>ส่งคำตอบ & รับ AI Feedback</span> <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 7. FEEDBACK VIEW -->
+        <div id="view-feedback" class="view max-w-2xl mx-auto mt-10">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 text-center">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-green-100 text-green-600 rounded-full mb-4">
+                    <i data-lucide="award" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">เยี่ยมมาก!</h2>
+                <p class="text-slate-500 mb-6">คุณได้คะแนน <span id="score-display" class="font-bold text-2xl text-green-600"></span> / 5 คะแนน</p>
+
+                <div class="text-left bg-gradient-to-br from-sky-50 to-indigo-50 p-6 rounded-xl border border-sky-100 mb-8">
+                    <h3 class="font-bold text-indigo-800 mb-3 flex items-center gap-2"><i data-lucide="bot"></i> AI Personalized Feedback</h3>
+                    <div id="ai-feedback-content" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+                        <div class="text-center py-4"><span class="loader"></span><p class="mt-2 text-sky-600">AI กำลังวิเคราะห์ผลการเรียนรู้...</p></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center gap-4">
+                    <button onclick="navigate('progress')" class="bg-slate-100 text-slate-700 px-6 py-3 rounded-xl hover:bg-slate-200 transition font-semibold">ดูความก้าวหน้า</button>
+                    <button onclick="navigate('storybook')" class="bg-sky-600 text-white px-8 py-3 rounded-xl hover:bg-sky-700 transition font-semibold shadow-md">กลับไปเลือกอ่านเรื่องต่อไป</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. PROGRESS DASHBOARD -->
+        <div id="view-progress" class="view">
+            <div class="mb-8">
+                <button onclick="navigate('storybook')" class="text-slate-500 hover:text-sky-600 flex items-center gap-1 transition mb-4"><i data-lucide="arrow-left" class="w-4 h-4"></i> กลับไปชั้นหนังสือ</button>
+                <h2 class="text-3xl font-bold text-slate-800">ความก้าวหน้าของฉัน (My Progress)</h2>
+                <p class="text-slate-500 mt-1">ติดตามผลสัมฤทธิ์และเป้าหมายการกำกับตนเองของคุณ</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-sky-100 flex flex-col justify-center items-center text-center">
+                    <div class="bg-sky-100 p-3 rounded-full text-sky-600 mb-2"><i data-lucide="book-open"></i></div>
+                    <p class="text-slate-500 text-sm">อ่านจบแล้ว</p>
+                    <p class="text-2xl font-bold text-slate-800"><span id="prog-read-count">0</span> <span class="text-sm font-normal text-slate-500">เรื่อง</span></p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex flex-col justify-center items-center text-center">
+                    <div class="bg-emerald-100 p-3 rounded-full text-emerald-600 mb-2"><i data-lucide="target"></i></div>
+                    <p class="text-slate-500 text-sm">เป้าหมายหมวดหมู่</p>
+                    <p class="text-2xl font-bold text-slate-800"><span id="prog-cat-count">0</span> / <span id="prog-cat-goal">0</span></p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 flex flex-col justify-center items-center text-center">
+                    <div class="bg-indigo-100 p-3 rounded-full text-indigo-600 mb-2"><i data-lucide="check-circle-2"></i></div>
+                    <p class="text-slate-500 text-sm">คะแนนเฉลี่ย</p>
+                    <p class="text-2xl font-bold text-slate-800"><span id="prog-avg-score">0</span><span class="text-sm font-normal text-slate-500">/5</span></p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100 flex flex-col justify-center items-center text-center">
+                    <div class="bg-purple-100 p-3 rounded-full text-purple-600 mb-2"><i data-lucide="bot"></i></div>
+                    <p class="text-slate-500 text-sm">เป้าหมายหลัก (ที่เลือก)</p>
+                    <div id="prog-main-goal" class="mt-2 flex flex-wrap justify-center gap-1"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-lg mb-4 text-slate-800">ประวัติการอ่าน (Reading History)</h3>
+                <div id="prog-history-list" class="space-y-3">
+                    <!-- History injected via JS -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Add Student Modal -->
+    <div id="add-student-modal" class="fixed inset-0 bg-slate-900/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
+            <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="user-plus" class="text-indigo-600"></i> เพิ่มนักเรียนใหม่ (รายบุคคล)</h3>
+            <form id="add-student-form" onsubmit="submitNewStudent(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสประจำตัว (5 หลัก)</label>
+                        <input type="text" id="add-id" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">เลขที่</label>
+                        <input type="number" id="add-num" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อ-สกุล</label>
+                    <input type="text" id="add-name" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">ห้องเรียน</label>
+                        <input type="text" id="add-room" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="เช่น ม.1/1" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน</label>
+                        <input type="text" id="add-pass" value="12345678" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeAddStudentModal()" class="w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
+                    <button type="submit" class="w-1/2 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold shadow-md">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div id="edit-student-modal" class="fixed inset-0 bg-slate-900/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
+            <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="edit" class="text-amber-500"></i> แก้ไขข้อมูลนักเรียน</h3>
+            <form id="edit-student-form" onsubmit="submitEditStudent(event)" class="space-y-4">
+                <input type="hidden" id="edit-old-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสประจำตัว (5 หลัก)</label>
+                        <input type="text" id="edit-id" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">เลขที่</label>
+                        <input type="number" id="edit-num" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อ-สกุล</label>
+                    <input type="text" id="edit-name" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">ห้องเรียน</label>
+                        <input type="text" id="edit-room" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน</label>
+                        <input type="text" id="edit-pass" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" required>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeEditStudentModal()" class="w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
+                    <button type="submit" class="w-1/2 px-4 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-semibold shadow-md">บันทึกการแก้ไข</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Student Profile Modal -->
+    <div id="student-profile-modal" class="fixed inset-0 bg-slate-900/60 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
+            <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="user-cog" class="text-sky-600"></i> ข้อมูลส่วนตัว</h3>
+            <form id="student-profile-form" onsubmit="submitStudentProfile(event)" class="space-y-4">
+                <input type="hidden" id="profile-old-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสประจำตัว (5 หลัก)</label>
+                        <input type="text" id="profile-id" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">เลขที่</label>
+                        <input type="number" id="profile-num" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none text-sm" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อ-สกุล</label>
+                    <input type="text" id="profile-name" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none text-sm" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">ห้องเรียน</label>
+                        <input type="text" id="profile-room" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน</label>
+                        <input type="text" id="profile-pass" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none text-sm" required>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeStudentProfileModal()" class="w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
+                    <button type="submit" class="w-1/2 px-4 py-3 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition font-semibold shadow-md">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Alert/Confirm Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4 transform transition-all">
+            <div class="text-center">
+                <div id="custom-modal-icon" class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-sky-100 text-sky-600 mb-4">
+                    <i data-lucide="bell" class="h-8 w-8"></i>
+                </div>
+                <h3 id="custom-modal-title" class="text-xl font-bold text-slate-800 mb-2">แจ้งเตือน</h3>
+                <p id="custom-modal-text" class="text-sm text-slate-600 mb-6 leading-relaxed"></p>
+            </div>
+            <div class="flex gap-3 justify-center">
+                <button id="custom-modal-cancel" class="hidden w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
+                <button id="custom-modal-confirm" class="w-full px-4 py-3 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition font-semibold shadow-md">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal รายชื่อผู้อ่าน -->
+    <div id="view-readers-modal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl mx-4 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="users" class="text-indigo-600"></i> รายชื่อผู้อ่าน</h3>
+                <button onclick="closeReadersModal()" class="text-slate-400 hover:text-red-500 transition p-1 rounded-lg hover:bg-red-50"><i data-lucide="x"></i></button>
+            </div>
+            <div class="mb-4 text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                กำลังดูข้อมูลของ: <strong id="readers-modal-title" class="text-indigo-700 block mt-1 text-base"></strong>
+                <div class="mt-2 text-xs">จำนวนผู้อ่าน (อิงตามห้องที่กรอง): <strong id="readers-modal-count" class="text-slate-800 text-sm"></strong> คน</div>
+            </div>
+            <div class="overflow-y-auto flex-1 border border-slate-200 rounded-xl relative">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-100 sticky top-0 shadow-sm">
+                        <tr>
+                            <th class="p-3 font-semibold text-slate-700 border-b">ห้อง</th>
+                            <th class="p-3 font-semibold text-slate-700 border-b text-center">เลขที่</th>
+                            <th class="p-3 font-semibold text-slate-700 border-b">รหัส</th>
+                            <th class="p-3 font-semibold text-slate-700 border-b">ชื่อ-สกุล</th>
+                        </tr>
+                    </thead>
+                    <tbody id="readers-modal-list" class="divide-y divide-slate-100 bg-white">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIG & API (ระบบ Fallback รุ่น AI สำรอง)
+        // ==========================================
+        const apiKey = ""; 
+        const NETLIFY_API_KEY = "AIzaSyCybyYJNdSxWkWwALMifY6rpcQFrQLWF1I"; 
+        const activeKey = apiKey || NETLIFY_API_KEY;
+
+        // ==========================================
+        // APP STATE & ICONS
+        // ==========================================
+        let currentUser = null;
+        let currentStory = null;
+        let currentScore = 0;
+        let isWaitingForAI = false;
+
+        lucide.createIcons();
+
+        // ==========================================
+        // CUSTOM MODAL LOGIC
+        // ==========================================
+        function showModal(opts) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').innerText = opts.title || 'แจ้งเตือน';
+            document.getElementById('custom-modal-text').innerHTML = (opts.message || '').replace(/\n/g, '<br>');
+            
+            const cancelBtn = document.getElementById('custom-modal-cancel');
+            const confirmBtn = document.getElementById('custom-modal-confirm');
+            const iconContainer = document.getElementById('custom-modal-icon');
+            
+            let iconName = 'bell';
+            let iconColor = 'bg-sky-100 text-sky-600';
+            let confirmColor = 'bg-sky-600 hover:bg-sky-700 text-white';
+            
+            if (opts.type === 'error') { iconName = 'alert-triangle'; iconColor = 'bg-red-100 text-red-600'; confirmColor = 'bg-red-600 hover:bg-red-700 text-white'; }
+            else if (opts.type === 'success') { iconName = 'check-circle'; iconColor = 'bg-emerald-100 text-emerald-600'; confirmColor = 'bg-emerald-600 hover:bg-emerald-700 text-white'; }
+            else if (opts.type === 'warning') { iconName = 'alert-circle'; iconColor = 'bg-amber-100 text-amber-600'; confirmColor = 'bg-amber-500 hover:bg-amber-600 text-white'; }
+
+            iconContainer.className = `mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 ${iconColor}`;
+            iconContainer.innerHTML = `<i data-lucide="${iconName}" class="h-8 w-8"></i>`;
+            
+            confirmBtn.className = `w-full px-4 py-3 rounded-xl transition font-semibold shadow-md ${confirmColor}`;
+
+            confirmBtn.onclick = () => {
+                modal.classList.add('hidden');
+                if (opts.onConfirm) opts.onConfirm();
+            };
+
+            if (opts.showCancel) {
+                cancelBtn.classList.remove('hidden');
+                confirmBtn.classList.remove('w-full');
+                confirmBtn.classList.add('w-1/2');
+                cancelBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    if (opts.onCancel) opts.onCancel();
+                };
+            } else {
+                cancelBtn.classList.add('hidden');
+                confirmBtn.classList.remove('w-1/2');
+                confirmBtn.classList.add('w-full');
+            }
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // MOCK DATABASE 
+        // ==========================================
+        let loginMode = 'student'; 
+
+        const MOCK_USERS = {
+            "12345": { id: "12345", number: "1", name: "เด็กชายสมชาย รักดี", pass: "12345678", role: "student", room: "ม.1/1", goals: null, readHistory: [], scores: [] },
+            "Kotcha": { id: "Kotcha", name: "คุณครู Kotcha", pass: "K123456", role: "teacher" }
+        };
+
+        const CATEGORIES = [
+            { id: "c1", name: "My Digital Life", icon: "laptop", color: "text-blue-500", bg: "bg-blue-100" },
+            { id: "c2", name: "Hobbies", icon: "palette", color: "text-purple-500", bg: "bg-purple-100" },
+            { id: "c3", name: "Environment Around Us", icon: "leaf", color: "text-green-500", bg: "bg-green-100" },
+            { id: "c4", name: "Daily News", icon: "newspaper", color: "text-amber-500", bg: "bg-amber-100" }
+        ];
+
+        const STORIES = [];
+        const names = ["Sarah", "Tom", "Anna", "Mike", "Lisa", "John", "Emma", "David", "Lucy", "Peter"];
+        
+        const topicsA1 = {
+            "c1": ["Social Media", "Mobile Gaming", "Online Videos", "Texting Friends", "Tablet Drawing", "Sharing Pictures", "Digital Homework", "Music Apps", "E-books", "Video Calling"],
+            "c2": ["Drawing Pictures", "Riding a Bike", "Simple Cooking", "Taking Photos", "Growing Flowers", "Dancing", "Reading Comics", "Playing Chess", "Swimming", "Making Cakes"],
+            "c3": ["Cleaning the River", "Planting Trees", "Recycling Plastic", "Saving Water", "Park Animals", "Picking up Trash", "Walking to School", "Reusing Paper", "Protecting Birds", "The Beautiful Ocean"],
+            "c4": ["School Library", "Local Sports", "Sunny Weather", "Town Festival", "Science Fair", "New Park", "Charity Sale", "Art Show", "Helping Community", "Safe Driving"]
+        };
+
+        const topicsB1 = {
+            "c1": ["Cybersecurity Basics", "Algorithm Impacts", "Digital Footprints", "Artificial Intelligence", "The Gig Economy", "Social Media Influencers", "E-commerce Trends", "Virtual Reality", "Screen Time Management", "Internet Evolution"],
+            "c2": ["Advanced Photography", "Culinary Fermentation", "Mountain Biking", "Urban Hydroponics", "Musical Mastery", "Classical Dance", "Creative Blogging", "Strategic Board Games", "Scuba Diving", "Gourmet Pastry Arts"],
+            "c3": ["Climate Change Effects", "Renewable Energy", "Marine Conservation", "Zero Waste Concept", "Deforestation Issues", "Sustainable Agriculture", "Urban Pollution", "Biodiversity Importance", "Carbon Emissions", "Global Clean Water"],
+            "c4": ["Economic Policy Updates", "Medical Research", "International Trade", "Space Technologies", "Election Results", "Global Supply Chains", "Cultural Exchanges", "Public Transportation", "Smart Cities", "Environmental Summits"]
+        };
+
+        function generateStoryText(catId, level, topic, name) {
+            if (catId === 'c1') {
+                if (level === 'A1-A2') return `${name} loves spending time on ${topic.toLowerCase()}. Every day after school, ${name} uses a smartphone or computer to explore new things about it. It is very fun and exciting. However, one day, ${name} realized that looking at the screen for too long caused tired eyes and a headache. The doctor said ${name} needed to rest. So, ${name} decided to set a strict time limit. Now, ${name} only spends one hour a day on ${topic.toLowerCase()}. This helps ${name} stay healthy. ${name} also has more time to play outside with friends. Everyone agrees that balancing screen time and outdoor activities is the best way to live a happy life.`;
+                else return `In today's interconnected world, the concept of ${topic.toLowerCase()} has significantly transformed how we interact and process information. Research indicates that adolescents and young adults are particularly engaged with these digital paradigms. While the convenience and connectivity offered by ${topic.toLowerCase()} are undeniable, experts raise valid concerns regarding digital fatigue and the psychological impacts of constant online presence. Consequently, navigating this digital landscape requires a conscientious approach. Educational institutions and digital wellness advocates emphasize the importance of establishing healthy boundaries. By cultivating digital literacy and critical thinking, individuals can harness the benefits of ${topic.toLowerCase()} while mitigating potential adverse effects. Ultimately, achieving a sustainable equilibrium between our virtual engagements and physical realities remains a paramount challenge for modern society.`;
+            } else if (catId === 'c2') {
+                if (level === 'A1-A2') return `For ${name}, the best part of the weekend is ${topic.toLowerCase()}. It is a wonderful hobby that brings a lot of joy. At first, ${name} was not very good at it and made many mistakes. But with practice, ${name} learned how to do it perfectly. Now, ${name} often invites friends over to share this fun activity. They laugh, share ideas, and create beautiful memories together. ${name}'s parents are very supportive and sometimes buy new tools for this hobby. Having a creative hobby like ${topic.toLowerCase()} is important because it helps people relax after a long week of studying. ${name} hopes to continue doing this for many years.`;
+                else return `Engaging in ${topic.toLowerCase()} extends far beyond mere leisure; it is a profound avenue for personal development and cognitive enhancement. Enthusiasts who dedicate their time to ${topic.toLowerCase()} often report elevated levels of concentration and a remarkable reduction in stress. The intricate processes involved demand a unique blend of discipline, creativity, and perseverance. Furthermore, communities built around ${topic.toLowerCase()} foster collaborative environments where individuals exchange sophisticated techniques and constructive critiques. As practitioners advance in their proficiency, they frequently discover novel ways to innovate within the discipline. Ultimately, the meticulous pursuit of ${topic.toLowerCase()} not only refines specific skill sets but also cultivates a broader sense of accomplishment and psychological well-being.`;
+            } else if (catId === 'c3') {
+                if (level === 'A1-A2') return `The environment is our home, and we must take care of it. Yesterday, ${name} learned about the importance of ${topic.toLowerCase()}. The teacher explained that small actions can make a big difference. For example, ${name} started to help by organizing a local event focused on ${topic.toLowerCase()}. Many neighbors joined the activity, bringing their families and friends. They worked together for hours under the warm sun. By the end of the day, the area looked completely different and much cleaner. The local birds and animals seemed happier, too. ${name} felt very proud of this teamwork. It is a great reminder that when everyone helps, we can easily protect our beautiful nature.`;
+                else return `Contemporary environmental discourse heavily emphasizes the critical implications of ${topic.toLowerCase()}. As global populations expand and industrial activities intensify, the ecological footprint on our planet has reached unprecedented levels. Addressing the complexities of ${topic.toLowerCase()} requires multifaceted strategies, encompassing governmental regulations, corporate responsibility, and community-led initiatives. Scientific data robustly illustrates that proactive interventions regarding ${topic.toLowerCase()} can substantially rehabilitate degraded ecosystems and promote biodiversity. However, implementing these systemic changes often encounters economic and political resistance. Therefore, raising public awareness and fostering environmental advocacy are indispensable components of sustainable progress. It is incumbent upon current generations to prioritize ecological integrity, ensuring that resilient and thriving environments are preserved for future inhabitants.`;
+            } else if (catId === 'c4') {
+                if (level === 'A1-A2') return `Here is the latest news from our town. This week, the big story is about the ${topic.toLowerCase()}. Many people gathered in the center of the town to see what was happening. The mayor gave a short speech and thanked everyone for coming. There was music, delicious food, and many fun activities for children. ${name}, a local student, said it was the best day ever. The organizers worked very hard for months to prepare for this special event. The local newspaper took many photos of the smiling faces. It is wonderful to see the whole community coming together to celebrate the ${topic.toLowerCase()} in such a joyful way.`;
+                else return `In recent global developments, the focus has dramatically shifted towards the evolving landscape of ${topic.toLowerCase()}. Leading analysts and policymakers have convened to deliberate on the multifaceted consequences of these emerging trends. The implications of ${topic.toLowerCase()} resonate across various sectors, influencing economic stability, international relations, and socio-cultural dynamics. Recent empirical studies suggest a volatile trajectory, prompting stakeholders to adopt adaptable and resilient frameworks. While optimists highlight the potential for unprecedented growth and innovation, critics caution against unforeseen systemic vulnerabilities. Consequently, comprehensive regulatory measures and proactive monitoring are being fervently debated in legislative chambers worldwide. Navigating the unpredictable currents of ${topic.toLowerCase()} will undoubtedly demand collaborative foresight and strategic ingenuity on an international scale.`;
+            }
+            return "";
+        }
+
+        function generateQuiz(level, topic, name) {
+            if (level === 'A1-A2') {
+                return [
+                    { q: `What is the main topic of this story?`, options: ["Food", topic, "Sleeping", "Driving"], ans: 1 },
+                    { q: `How does ${name} or the community feel about it?`, options: ["Sad", "Angry", "Happy and positive", "Bored"], ans: 2 },
+                    { q: `Who is involved in the activity?`, options: ["Only animals", "Friends and community", "No one", "Aliens"], ans: 1 },
+                    { q: `Why is this activity important?`, options: ["It wastes time", "It is helpful and healthy", "It breaks computers", "It makes people tired"], ans: 1 },
+                    { q: `What does the word "fun" or "happy" mean in this context?`, options: ["Enjoyable", "Difficult", "Sad", "Expensive"], ans: 0 }
+                ];
+            } else {
+                return [
+                    { q: `What is the central theme discussed in the passage?`, options: ["Basic grammar", topic, "Fictional storytelling", "Ancient history"], ans: 1 },
+                    { q: `According to the text, what is a valid concern or challenge regarding this topic?`, options: ["It is entirely risk-free", "It requires careful navigation and boundaries", "It has no impact on society", "It is no longer relevant"], ans: 1 },
+                    { q: `Which of the following strategies is recommended?`, options: ["Ignoring the issue", "Cultivating awareness and critical thinking", "Banning it completely", "Reducing community involvement"], ans: 1 },
+                    { q: `What can be inferred about the future outlook on this subject?`, options: ["It will vanish soon", "It demands proactive and collaborative efforts", "It will resolve itself naturally", "It only affects a few people"], ans: 1 },
+                    { q: `Based on the context, what does the term "implications" or "impact" closely relate to?`, options: ["Consequences and effects", "Simple questions", "Unrelated details", "Humorous jokes"], ans: 0 }
+                ];
+            }
+        }
+
+        CATEGORIES.forEach(cat => {
+            for(let i=0; i<10; i++) {
+                let topic = topicsA1[cat.id][i];
+                let name = names[i % names.length];
+                STORIES.push({
+                    id: `${cat.id}-a1-s${i+1}`, categoryId: cat.id, categoryName: cat.name, level: 'A1-A2',
+                    title: `${cat.id === 'c4' ? 'News: ' : ''}${topic}`, cover: `https://picsum.photos/seed/${cat.id}a1${i}/800/400`, 
+                    text: generateStoryText(cat.id, 'A1-A2', topic, name), quiz: generateQuiz('A1-A2', topic, name), isHidden: false
+                });
+            }
+            for(let i=0; i<10; i++) {
+                let topic = topicsB1[cat.id][i];
+                let name = names[i % names.length];
+                STORIES.push({
+                    id: `${cat.id}-b1-s${i+1}`, categoryId: cat.id, categoryName: cat.name, level: 'B1-B2',
+                    title: `${cat.id === 'c4' ? 'Report: ' : ''}${topic}`, cover: `https://picsum.photos/seed/${cat.id}b1${i}/800/400`, 
+                    text: generateStoryText(cat.id, 'B1-B2', topic, name), quiz: generateQuiz('B1-B2', topic, name), isHidden: false
+                });
+            }
+        });
+
+        // 1 เรื่องตัวอย่าง
+        const sarahStory = STORIES.find(s => s.id === 'c1-a1-s1');
+        if(sarahStory) {
+            sarahStory.title = "Sarah's Smartphone Rules";
+            sarahStory.text = "Sarah got a new smartphone for her 13th birthday. At first, she spent six hours a day looking at screens. She played games, watched funny videos, and chatted with her friends constantly. After one week, her eyes felt very dry and she had terrible headaches. Her grades at school also dropped. Sarah realized she needed a change. She created personal rules: no phone during dinner, and no phone one hour before sleeping. Instead of scrolling, she started reading books again. Now, Sarah feels much healthier and her headaches disappeared completely.";
+        }
+
+        // ==========================================
+        // UI NAVIGATION & LOGIN LOGIC
+        // ==========================================
+        function navigate(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            window.scrollTo(0, 0);
+
+            if(viewId === 'storybook') renderStorybook();
+            if(viewId === 'progress') renderProgress();
+        }
+
+        function toggleLoginType(type) {
+            loginMode = type;
+            const btnS = document.getElementById('btn-login-student');
+            const btnT = document.getElementById('btn-login-teacher');
+            
+            if(type === 'student') {
+                btnS.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow text-sky-600 transition";
+                btnT.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition";
+                document.getElementById('login-title').innerText = "เข้าสู่ระบบนักเรียน";
+                document.getElementById('login-subtitle').innerText = "โรงเรียนน้ำพองศึกษา";
+                document.getElementById('label-username').innerText = "เลขประจำตัวนักเรียน (5 หลัก)";
+                document.getElementById('username').placeholder = "เช่น 12345";
+                document.getElementById('login-submit-btn').className = "w-full bg-sky-600 text-white py-3 rounded-xl hover:bg-sky-700 transition font-semibold shadow flex justify-center items-center gap-2";
+                document.getElementById('login-icon').setAttribute('data-lucide', 'graduation-cap');
+                document.getElementById('login-icon-container').className = "h-16 w-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4 text-sky-600 transition-colors";
+            } else {
+                btnT.className = "flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow text-indigo-600 transition";
+                btnS.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition";
+                document.getElementById('login-title').innerText = "เข้าสู่ระบบผู้สอน";
+                document.getElementById('login-subtitle').innerText = "Teacher Portal";
+                document.getElementById('label-username').innerText = "ชื่อผู้ใช้ (Teacher Username)";
+                document.getElementById('username').placeholder = "เช่น Kotcha";
+                document.getElementById('login-submit-btn').className = "w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold shadow flex justify-center items-center gap-2";
+                document.getElementById('login-icon').setAttribute('data-lucide', 'briefcase');
+                document.getElementById('login-icon-container').className = "h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 transition-colors";
+            }
+            lucide.createIcons();
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const id = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if (MOCK_USERS[id] && MOCK_USERS[id].pass === pass) {
+                currentUser = MOCK_USERS[id];
+                
+                if(currentUser.role === 'teacher') {
+                    document.getElementById('teacher-nav').classList.remove('hidden');
+                    document.getElementById('student-nav').classList.add('hidden');
+                    updateRoomFilterOptions(); 
+                    renderTeacherStudents();
+                    navigate('teacher');
+                    updateDashboardStats();
+                } else {
+                    document.getElementById('student-nav').classList.remove('hidden');
+                    document.getElementById('teacher-nav').classList.add('hidden');
+                    document.getElementById('nav-student-name').innerText = currentUser.name;
+                    document.getElementById('nav-student-id').innerText = `ID: ${currentUser.id}`;
+                    
+                    if (!currentUser.goals) navigate('goal');
+                    else navigate('storybook');
+                }
+            } else {
+                showModal({ title: 'เข้าสู่ระบบไม่สำเร็จ', message: 'ข้อมูลไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง', type: 'error' });
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('student-nav').classList.add('hidden');
+            document.getElementById('teacher-nav').classList.add('hidden');
+            document.getElementById('login-form').reset();
+            navigate('login');
+        }
+
+        // ==========================================
+        // P - PLANNING
+        // ==========================================
+        function saveGoals(e) {
+            e.preventDefault();
+            
+            const checkedBoxes = document.querySelectorAll('input[name="mainGoal"]:checked');
+            if(checkedBoxes.length === 0) {
+                showModal({ title: 'เกิดข้อผิดพลาด', message: 'กรุณาเลือกเป้าหมายการอ่านอย่างน้อย 1 ข้อครับ', type: 'warning' });
+                return;
+            }
+            
+            const selectedGoals = Array.from(checkedBoxes).map(cb => cb.value);
+
+            currentUser.goals = { 
+                main: selectedGoals,
+                catCount: parseInt(document.getElementById('catGoal').value),
+                storyCount: parseInt(document.getElementById('storyGoal').value)
+            };
+            navigate('storybook');
+        }
+
+        function renderStorybook() {
+            let goalText = Array.isArray(currentUser.goals.main) ? currentUser.goals.main.join(', ') : currentUser.goals.main;
+            document.getElementById('display-goal').innerText = `อ่าน ${currentUser.goals.catCount} หมวดหมู่ (หมวดละ ${currentUser.goals.storyCount} เรื่อง) | เน้น: ${goalText}`;
+            
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
+
+            CATEGORIES.forEach(cat => {
+                const storiesInCat = STORIES.filter(s => s.categoryId === cat.id && !s.isHidden);
+                if (storiesInCat.length === 0) return; 
+
+                let html = `
+                    <div class="mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold flex items-center gap-3">
+                                <div class="${cat.bg} ${cat.color} p-2 rounded-lg"><i data-lucide="${cat.icon}"></i></div>
+                                ${cat.name}
+                            </h3>
+                            <span class="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">มี ${storiesInCat.length} เรื่อง</span>
+                        </div>
+                        <div class="flex overflow-x-auto gap-6 pb-4 snap-x">
+                `;
+
+                storiesInCat.forEach(story => {
+                    const isRead = currentUser.readHistory.includes(story.id);
+                    const tagStyle = story.level === 'B1-B2' ? 'text-indigo-600 bg-indigo-100' : 'text-slate-500 bg-slate-100';
+                    
+                    html += `
+                        <div class="snap-start shrink-0 w-72 bg-white rounded-2xl shadow-sm hover:shadow-xl transition border border-slate-200 group cursor-pointer flex flex-col" onclick="openStory('${story.id}')">
+                            <div class="h-40 bg-slate-200 overflow-hidden relative rounded-t-2xl">
+                                <img src="${story.cover}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                ${isRead ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow"><i data-lucide="check" class="w-3 h-3"></i> อ่านแล้ว</div>' : ''}
+                            </div>
+                            <div class="p-5 flex-1 flex flex-col justify-between">
+                                <h4 class="font-bold text-lg text-slate-800 mb-2 group-hover:text-sky-600 transition leading-tight">${story.title}</h4>
+                                <div class="flex justify-between items-center mt-4 border-t pt-3">
+                                    <span class="text-xs font-semibold px-2 py-1 rounded ${tagStyle}">${story.level} Level</span>
+                                    <button class="text-sky-600 text-sm font-semibold flex items-center gap-1">อ่าน <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+                container.innerHTML += html;
+            });
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // P&S
+        // ==========================================
+        function openStory(storyId) {
+            currentStory = STORIES.find(s => s.id === storyId);
+            document.getElementById('read-category-header').innerText = currentStory.categoryName;
+            document.getElementById('read-title').innerText = currentStory.title;
+            document.getElementById('read-cover').src = currentStory.cover;
+            
+            const badge = document.getElementById('read-level-badge');
+            badge.className = `flex items-center gap-1 text-sm font-semibold mt-2 px-3 py-1 rounded-full w-max ${currentStory.level === 'B1-B2' ? 'bg-indigo-600 text-indigo-50' : 'bg-slate-600 text-slate-50'}`;
+            badge.innerHTML = `<i data-lucide="bar-chart-2" class="w-4 h-4"></i> Level: ${currentStory.level}`;
+
+            const words = currentStory.text.split(' ');
+            const wrappedText = words.map(word => {
+                const cleanWord = word.replace(/[.,'?!]/g, "");
+                return `<span class="clickable-word" onclick="askHint('${cleanWord}', this)">${word}</span>`;
+            }).join(' ');
+            
+            document.getElementById('read-content').innerHTML = wrappedText;
+            
+            document.getElementById('chat-history').innerHTML = `
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 flex-shrink-0"><i data-lucide="bot" class="w-4 h-4"></i></div>
+                    <div class="bg-white border p-3 rounded-2xl rounded-tl-none text-sm text-slate-700 shadow-sm">
+                        สวัสดีครับ! หากอ่านแล้วไม่เข้าใจ <b>ห้ามใช้แอปแปลภาษานะครับ</b> <br><br>ให้คลิกที่คำศัพท์ หรือพิมพ์ถามครูในช่องแชตนี้ ครูจะช่วย "ใบ้คำ" ให้เพื่อให้นักเรียนฝึกเดาความหมายครับ 😊
+                    </div>
+                </div>
+            `;
+            
+            navigate('reading');
+        }
+
+        async function askHint(word, element) {
+            if(isWaitingForAI) return;
+            
+            document.querySelectorAll('.clickable-word').forEach(el => el.style.backgroundColor = 'transparent');
+            if(element) element.style.backgroundColor = '#e0f2fe';
+
+            addChatMessage('user', `ช่วยใบ้คำว่า "${word}" หน่อยครับ`);
+            
+            const prompt = `You are an AI assistant in an English learning app for Thai 7th graders. The student clicked the word "${word}" in the story "${currentStory.title}" (Level: ${currentStory.level}). 
+            Task: Give a short hint in Thai to help them guess the meaning. DO NOT give the direct Thai translation. Give an example or explain simply. Keep it under 2 sentences.`;
+            
+            await callGeminiToChat(prompt);
+        }
+
+        async function handleChat(e) {
+            e.preventDefault();
+            if(isWaitingForAI) return;
+
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            addChatMessage('user', msg);
+            input.value = '';
+
+            const prompt = `You are an AI assistant in an English learning app for Thai 7th graders reading "${currentStory.title}" (Level: ${currentStory.level}).
+            Student asks: "${msg}".
+            Task: Act as a scaffolding teacher. Help them understand, but DO NOT give direct translations. Give hints or explain in simple Thai.`;
+
+            await callGeminiToChat(prompt);
+        }
+
+        function addChatMessage(sender, text) {
+            const history = document.getElementById('chat-history');
+            const isUser = sender === 'user';
+            
+            let html = '';
+            if(isUser) {
+                html = `<div class="flex gap-3 flex-row-reverse"><div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0"><i data-lucide="user" class="w-4 h-4"></i></div><div class="bg-sky-600 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm max-w-[85%]">${text}</div></div>`;
+            } else {
+                html = `<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 flex-shrink-0"><i data-lucide="bot" class="w-4 h-4"></i></div><div class="bg-white border border-sky-100 p-3 rounded-2xl rounded-tl-none text-sm text-slate-700 shadow-sm max-w-[85%]">${text === 'loading' ? '<span class="loader"></span>' : text}</div></div>`;
+            }
+            
+            const prevLoadings = history.querySelectorAll('.loader');
+            if(prevLoadings.length > 0 && !isUser) history.lastElementChild.remove();
+
+            history.innerHTML += html;
+            history.scrollTop = history.scrollHeight;
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // R - REFLECTION & QUIZ
+        // ==========================================
+        function startQuiz() {
+            document.getElementById('quiz-title-display').innerText = currentStory.title;
+            const container = document.getElementById('mcq-container');
+            container.innerHTML = '';
+
+            currentStory.quiz.forEach((q, index) => {
+                let optionsHtml = '';
+                q.options.forEach((opt, optIdx) => {
+                    optionsHtml += `<label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition"><input type="radio" name="q${index}" value="${optIdx}" required class="w-4 h-4 text-indigo-600 focus:ring-indigo-500"><span class="text-sm text-slate-700">${opt}</span></label>`;
+                });
+                container.innerHTML += `<div class="bg-slate-50 p-5 rounded-xl border border-slate-200"><p class="font-bold text-slate-800 mb-3">${index + 1}. ${q.q}</p><div class="space-y-2">${optionsHtml}</div></div>`;
+            });
+
+            document.getElementById('summary-input').value = '';
+            document.getElementById('reflection-input').value = '';
+            navigate('quiz');
+        }
+
+        async function submitQuiz(e) {
+            e.preventDefault();
+            
+            let score = 0;
+            currentStory.quiz.forEach((q, index) => {
+                const selected = document.querySelector(`input[name="q${index}"]:checked`);
+                if(selected && parseInt(selected.value) === q.ans) score++;
+            });
+            currentScore = score;
+            
+            if(!currentUser.readHistory.includes(currentStory.id)) {
+                currentUser.readHistory.push(currentStory.id);
+            }
+            currentUser.scores.push({ storyId: currentStory.id, score: score });
+
+            const summaryText = document.getElementById('summary-input').value;
+            const reflectionText = document.getElementById('reflection-input').value;
+            const goalTextForAI = Array.isArray(currentUser.goals.main) ? currentUser.goals.main.join(', ') : currentUser.goals.main;
+
+            document.getElementById('score-display').innerText = currentScore;
+            document.getElementById('ai-feedback-content').innerHTML = '<div class="text-center py-4"><span class="loader"></span><p class="mt-2 text-sky-600 text-sm">AI กำลังวิเคราะห์ผลและเขียนคำแนะนำ...</p></div>';
+            navigate('feedback');
+
+            const prompt = `You are an AI teacher evaluating a Thai 7th grader using the 2PSR Model. 
+            Story read: "${currentStory.title}" (Level: ${currentStory.level}).
+            Quiz Score: ${score}/5.
+            Student's chosen goals: "${goalTextForAI}".
+            Student's summary: "${summaryText}".
+            Student's reflection: "${reflectionText}".
+            Task: Write personalized feedback in Thai. 
+            1. Congratulate them. 2. Briefly comment on their summary (is it accurate?). 3. Analyze their reflection vs goals. 4. Give 1 practical tip for next time. Keep under 120 words.`;
+
+            try {
+                const feedback = await generateGeminiText(prompt);
+                document.getElementById('ai-feedback-content').innerHTML = feedback.replace(/\n/g, '<br>');
+            } catch (error) {
+                console.error("Feedback Error:", error);
+                document.getElementById('ai-feedback-content').innerHTML = `<div class="text-red-500 text-center py-4">❌ <b>เกิดข้อผิดพลาดในการเชื่อมต่อ AI:</b><br>${error.message}<br><span class="text-xs text-slate-500 mt-2 inline-block">กรุณากดรีเฟรชหน้าเว็บและลองใหม่อีกครั้ง</span></div>`;
+            }
+        }
+
+        // ==========================================
+        // PROGRESS DASHBOARD
+        // ==========================================
+        function renderProgress() {
+            document.getElementById('prog-read-count').innerText = currentUser.readHistory.length;
+            
+            const goalContainer = document.getElementById('prog-main-goal');
+            goalContainer.innerHTML = '';
+            if (currentUser.goals && currentUser.goals.main) {
+                const goalsArr = Array.isArray(currentUser.goals.main) ? currentUser.goals.main : [currentUser.goals.main];
+                goalsArr.forEach(g => {
+                    goalContainer.innerHTML += `<span class="bg-sky-100 text-sky-700 px-2 py-1 rounded-lg text-xs shadow-sm">${g}</span>`;
+                });
+            } else {
+                goalContainer.innerHTML = '<span class="text-slate-400 italic text-sm">ยังไม่ตั้งเป้าหมาย</span>';
+            }
+            
+            const catsRead = new Set();
+            currentUser.readHistory.forEach(id => {
+                const story = STORIES.find(s => s.id === id);
+                if(story) catsRead.add(story.categoryId);
+            });
+            document.getElementById('prog-cat-count').innerText = catsRead.size;
+            document.getElementById('prog-cat-goal').innerText = currentUser.goals ? currentUser.goals.catCount : 0;
+
+            if(currentUser.scores.length > 0) {
+                const total = currentUser.scores.reduce((sum, s) => sum + s.score, 0);
+                const avg = (total / currentUser.scores.length).toFixed(1);
+                document.getElementById('prog-avg-score').innerText = avg;
+            }
+
+            const list = document.getElementById('prog-history-list');
+            list.innerHTML = '';
+            if(currentUser.readHistory.length === 0) {
+                list.innerHTML = '<p class="text-slate-500 text-sm">ยังไม่มีประวัติการอ่าน เริ่มอ่านเรื่องแรกกันเลย!</p>';
+            } else {
+                currentUser.scores.reverse().forEach(record => {
+                    const story = STORIES.find(s => s.id === record.storyId);
+                    list.innerHTML += `
+                        <div class="flex justify-between items-center p-3 hover:bg-slate-50 rounded-lg border border-slate-100 transition">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-green-100 text-green-600 p-2 rounded-lg"><i data-lucide="check" class="w-4 h-4"></i></div>
+                                <div>
+                                    <p class="font-bold text-sm text-slate-800">${story.title}</p>
+                                    <p class="text-xs text-slate-500">${story.categoryName} <span class="ml-1 bg-slate-200 px-1 rounded">${story.level}</span></p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-full text-xs">ได้ ${record.score}/5 คะแนน</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // GEMINI API UTILS (ระบบ Fallback แบบใหม่)
+        // ==========================================
+        async function callGeminiToChat(prompt) {
+            isWaitingForAI = true;
+            addChatMessage('ai', 'loading');
+            try {
+                const text = await generateGeminiText(prompt);
+                addChatMessage('ai', text);
+            } catch (error) {
+                console.error("Chat Error:", error);
+                addChatMessage('ai', `❌ <b>เกิดข้อผิดพลาด:</b> ${error.message} <br><span class="text-xs text-slate-500 mt-1 block">ลองกดถามใหม่อีกครั้ง หรือรีเฟรชหน้าเว็บครับ 😅</span>`);
+            } finally {
+                isWaitingForAI = false;
+            }
+        }
+
+        async function generateGeminiText(prompt) {
+            const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } };
+            
+            // เตรียมโมเดลไว้ 3 รุ่น เผื่อรุ่นไหนตายหรือหมดอายุ ระบบจะข้ามไปลองรุ่นถัดไปอัตโนมัติ
+            const modelsToTry = apiKey ? ["gemini-2.5-flash-preview-09-2025"] : ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"];
+            let lastError = null;
+
+            for (let model of modelsToTry) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`;
+                try {
+                    const response = await fetch(url, { 
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" }, 
+                        body: JSON.stringify(payload) 
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.candidates && data.candidates[0].content) {
+                        return data.candidates[0].content.parts[0].text;
+                    } else if (!response.ok) {
+                        lastError = new Error(`API Error [${response.status}] for ${model}: ${data.error?.message || response.statusText}`);
+                        console.warn(lastError.message); // แจ้งเตือนเงียบๆ แล้วลุยลองโมเดลถัดไป
+                        continue; 
+                    } else if (data.promptFeedback) {
+                        throw new Error("คำสั่งถูกบล็อกด้วยระบบความปลอดภัยของ Google");
+                    }
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+            throw lastError || new Error("รูปแบบข้อมูลจาก AI ไม่ถูกต้อง หรือไม่สามารถเชื่อมต่อโมเดลได้เลย");
+        }
+
+        // ==========================================
+        // TEACHER DASHBOARD LOGIC
+        // ==========================================
+        function updateRoomFilterOptions() {
+            const selectStudents = document.getElementById('teacher-room-filter');
+            const selectDash = document.getElementById('dash-room-filter');
+            const currentStudentsVal = selectStudents.value;
+            const currentDashVal = selectDash.value;
+            
+            const rooms = new Set();
+            Object.values(MOCK_USERS).forEach(u => {
+                if(u.role === 'student' && u.room) {
+                    rooms.add(u.room);
+                }
+            });
+            
+            const sortedRooms = Array.from(rooms).sort();
+            
+            let html = '<option value="all">นักเรียนทั้งหมด (All)</option>';
+            sortedRooms.forEach(room => {
+                html += `<option value="${room}">${room}</option>`;
+            });
+            
+            selectStudents.innerHTML = html;
+            selectDash.innerHTML = html;
+            
+            if (currentStudentsVal === 'all' || sortedRooms.includes(currentStudentsVal)) selectStudents.value = currentStudentsVal;
+            else selectStudents.value = 'all';
+
+            if (currentDashVal === 'all' || sortedRooms.includes(currentDashVal)) selectDash.value = currentDashVal;
+            else selectDash.value = 'all';
+        }
+
+        let chartGoalInstance = null;
+        let chartScoreInstance = null;
+
+        function updateDashboardStats() {
+            const roomFilter = document.getElementById('dash-room-filter').value;
+            const students = Object.values(MOCK_USERS).filter(u => u.role === 'student' && (roomFilter === 'all' || u.room === roomFilter));
+            
+            const totalStudents = students.length || 1; 
+            
+            let totalReads = 0;
+            let aiUsageMock = 0;
+            
+            const goalCounts = { "จับใจความ": 0, "เดาศัพท์": 0, "วิเคราะห์": 0, "สร้างวินัย": 0, "ยังไม่ตั้งเป้าหมาย": 0 };
+            const scoreRanges = { "ดีเยี่ยม (4-5)": 0, "ปานกลาง (3-3.9)": 0, "ปรับปรุง (0-2.9)": 0, "ยังไม่มีคะแนน": 0 };
+            
+            const catStats = CATEGORIES.map(c => ({ id: c.id, name: c.name, count: 0, percent: 0 }));
+            const storyStats = STORIES.map(s => ({ id: s.id, categoryName: s.categoryName, title: s.title, level: s.level, count: 0, percent: 0 }));
+
+            students.forEach(s => {
+                const reads = s.readHistory ? s.readHistory.length : 0;
+                totalReads += reads;
+                aiUsageMock += reads * Math.floor(Math.random() * 3 + 1); 
+                
+                if (s.goals && s.goals.main) {
+                    let goalsArr = Array.isArray(s.goals.main) ? s.goals.main : [s.goals.main];
+                    if (goalsArr.length > 0) {
+                        goalsArr.forEach(g => {
+                            if(goalCounts[g] !== undefined) goalCounts[g]++;
+                        });
+                    } else {
+                        goalCounts["ยังไม่ตั้งเป้าหมาย"]++;
+                    }
+                } else {
+                    goalCounts["ยังไม่ตั้งเป้าหมาย"]++;
+                }
+
+                if (s.scores && s.scores.length > 0) {
+                    const sum = s.scores.reduce((a, b) => a + b.score, 0);
+                    const avg = sum / s.scores.length;
+                    if (avg >= 4.0) scoreRanges["ดีเยี่ยม (4-5)"]++;
+                    else if (avg >= 3.0) scoreRanges["ปานกลาง (3-3.9)"]++;
+                    else scoreRanges["ปรับปรุง (0-2.9)"]++;
+                } else {
+                    scoreRanges["ยังไม่มีคะแนน"]++;
+                }
+
+                if (s.readHistory && s.readHistory.length > 0) {
+                    const catsReadByStudent = new Set();
+                    s.readHistory.forEach(storyId => {
+                        const story = STORIES.find(st => st.id === storyId);
+                        if (story) catsReadByStudent.add(story.categoryId);
+                        
+                        const sStat = storyStats.find(st => st.id === storyId);
+                        if (sStat) sStat.count++;
+                    });
+
+                    catsReadByStudent.forEach(catId => {
+                        const cStat = catStats.find(c => c.id === catId);
+                        if (cStat) cStat.count++;
+                    });
+                }
+            });
+
+            document.getElementById('total-students-count').innerText = students.length;
+            document.getElementById('dash-reads-count').innerText = totalReads;
+            document.getElementById('dash-ai-count').innerText = aiUsageMock;
+
+            if (chartGoalInstance) chartGoalInstance.destroy();
+            const ctxGoal = document.getElementById('goalChart').getContext('2d');
+            chartGoalInstance = new Chart(ctxGoal, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(goalCounts),
+                    datasets: [{
+                        data: Object.values(goalCounts),
+                        backgroundColor: ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#cbd5e1'],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: { 
+                            callbacks: { 
+                                label: (context) => {
+                                    let count = goalCounts[context.label];
+                                    let percent = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
+                                    return ` ${context.label}: ${count} คน (สัดส่วน ${percent}% ของนักเรียน)`; 
+                                }
+                            } 
+                        },
+                        legend: { position: 'bottom', labels: { font: { family: 'Prompt' }, boxWidth: 12 } }
+                    }
+                }
+            });
+
+            const scorePercentages = Object.values(scoreRanges).map(val => ((val / totalStudents) * 100).toFixed(1));
+            if (chartScoreInstance) chartScoreInstance.destroy();
+            const ctxScore = document.getElementById('scoreChart').getContext('2d');
+            chartScoreInstance = new Chart(ctxScore, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(scoreRanges),
+                    datasets: [{
+                        label: 'ร้อยละของนักเรียน (%)',
+                        data: scorePercentages,
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#cbd5e1'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'เปอร์เซ็นต์ (%)', font: { family: 'Prompt' } } },
+                        x: { ticks: { font: { family: 'Prompt', size: 11 } } }
+                    },
+                    plugins: {
+                        tooltip: { callbacks: { label: (context) => ` ${context.raw}% (${scoreRanges[context.label]} คน)` } },
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            catStats.forEach(c => { c.percent = totalStudents > 0 ? ((c.count / totalStudents) * 100).toFixed(1) : 0; });
+            catStats.sort((a, b) => b.count - a.count);
+
+            storyStats.forEach(s => { s.percent = totalStudents > 0 ? ((s.count / totalStudents) * 100).toFixed(1) : 0; });
+            storyStats.sort((a, b) => b.count - a.count);
+
+            const catTbody = document.getElementById('dash-cat-popularity');
+            catTbody.innerHTML = '';
+            catStats.forEach(c => {
+                catTbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3 border-b border-slate-100">
+                            <div class="font-medium text-slate-800">${c.name}</div>
+                            <div class="w-full bg-slate-200 rounded-full h-1.5 mt-1.5">
+                                <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${c.percent}%"></div>
+                            </div>
+                        </td>
+                        <td class="p-3 text-right w-24 border-b border-slate-100">
+                            <div class="font-bold text-indigo-600">${c.percent}%</div>
+                            <div class="text-xs text-slate-500">${c.count} คน</div>
+                        </td>
+                        <td class="p-3 w-16 text-center border-b border-slate-100">
+                            <button onclick="openReadersModal('${c.id}', 'category')" class="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm" title="ดูรายชื่อผู้อ่าน"><i data-lucide="users" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const storyTbody = document.getElementById('dash-story-popularity');
+            storyTbody.innerHTML = '';
+            const topStories = storyStats.slice(0, 10);
+            topStories.forEach(s => {
+                const tagStyle = s.level === 'B1-B2' ? 'text-indigo-700 bg-indigo-100' : 'text-slate-600 bg-slate-100';
+                storyTbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3 border-b border-slate-100">
+                            <div class="text-xs text-slate-500 truncate w-48" title="${s.categoryName}">${s.categoryName} <span class="ml-1 px-1 rounded ${tagStyle}">${s.level}</span></div>
+                            <div class="font-medium text-slate-800 truncate w-48" title="${s.title}">${s.title}</div>
+                            <div class="w-full bg-slate-200 rounded-full h-1.5 mt-1.5">
+                                <div class="bg-sky-500 h-1.5 rounded-full" style="width: ${s.percent}%"></div>
+                            </div>
+                        </td>
+                        <td class="p-3 text-right w-24 border-b border-slate-100">
+                            <div class="font-bold text-sky-600">${s.percent}%</div>
+                            <div class="text-xs text-slate-500">${s.count} คน</div>
+                        </td>
+                        <td class="p-3 w-16 text-center border-b border-slate-100">
+                            <button onclick="openReadersModal('${s.id}', 'story')" class="p-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition shadow-sm" title="ดูรายชื่อผู้อ่าน"><i data-lucide="users" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function openReadersModal(id, type) {
+            const roomFilter = document.getElementById('dash-room-filter').value;
+            let studentsToSearch = Object.values(MOCK_USERS).filter(u => u.role === 'student' && (roomFilter === 'all' || u.room === roomFilter));
+            
+            let readers = [];
+            let titleName = '';
+
+            if (type === 'category') {
+                const cat = CATEGORIES.find(c => c.id === id);
+                titleName = `หมวดหมู่: ${cat.name}`;
+                
+                readers = studentsToSearch.filter(s => {
+                    if (!s.readHistory) return false;
+                    return s.readHistory.some(storyId => {
+                        const story = STORIES.find(st => st.id === storyId);
+                        return story && story.categoryId === id;
+                    });
+                });
+            } else if (type === 'story') {
+                const story = STORIES.find(s => s.id === id);
+                titleName = `เรื่อง: ${story.title} [${story.level}]`;
+                
+                readers = studentsToSearch.filter(s => {
+                    if (!s.readHistory) return false;
+                    return s.readHistory.includes(id);
+                });
+            }
+
+            readers.sort((a, b) => {
+                if (a.room !== b.room) return (a.room || '').localeCompare(b.room || '');
+                return parseInt(a.number || 0) - parseInt(b.number || 0);
+            });
+
+            document.getElementById('readers-modal-title').innerText = titleName;
+            document.getElementById('readers-modal-count').innerText = readers.length;
+
+            const tbody = document.getElementById('readers-modal-list');
+            tbody.innerHTML = '';
+            
+            if (readers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 bg-slate-50">ยังไม่มีข้อมูลผู้อ่านในขณะนี้</td></tr>';
+            } else {
+                readers.forEach(u => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3 border-b border-slate-100 text-slate-600">${u.room || '-'}</td>
+                            <td class="p-3 border-b border-slate-100 text-slate-600 text-center">${u.number || '-'}</td>
+                            <td class="p-3 border-b border-slate-100 font-medium text-slate-600">${u.id}</td>
+                            <td class="p-3 border-b border-slate-100 font-medium text-slate-800">${u.name}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('view-readers-modal').classList.remove('hidden');
+        }
+
+        function closeReadersModal() {
+            document.getElementById('view-readers-modal').classList.add('hidden');
+        }
+
+        function switchTeacherTab(tabId) {
+            ['dash', 'students', 'content'].forEach(id => {
+                const btn = document.getElementById(`tab-btn-${id}`);
+                const content = document.getElementById(`t-tab-${id}`);
+                
+                btn.className = "px-6 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent hover:border-indigo-300 transition whitespace-nowrap";
+                content.classList.add('hidden');
+                content.classList.remove('block');
+                
+                if(id === tabId) {
+                    btn.className = "px-6 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 transition whitespace-nowrap";
+                    content.classList.remove('hidden');
+                    content.classList.add('block');
+                    
+                    if(tabId === 'content') renderTeacherStories();
+                    if(tabId === 'dash') updateDashboardStats(); 
+                }
+            });
+        }
+
+        function renderTeacherStudents() {
+            const roomFilter = document.getElementById('teacher-room-filter').value;
+            const tbody = document.getElementById('teacher-students-list');
+            const roomActions = document.getElementById('room-actions-group');
+            tbody.innerHTML = '';
+
+            if (roomFilter !== 'all') {
+                roomActions.classList.remove('hidden');
+            } else {
+                roomActions.classList.add('hidden');
+            }
+
+            let students = Object.values(MOCK_USERS).filter(u => u.role === 'student');
+            
+            students.sort((a, b) => {
+                if (a.room !== b.room) return (a.room || '').localeCompare(b.room || '');
+                return parseInt(a.number || 0) - parseInt(b.number || 0);
+            });
+            
+            students.forEach(u => {
+                if(roomFilter !== 'all' && u.room !== roomFilter) return;
+
+                let avg = "0.0";
+                if(u.scores && u.scores.length > 0) {
+                   const sum = u.scores.reduce((a,b)=>a+b.score, 0);
+                   avg = (sum/u.scores.length).toFixed(1);
+                }
+                
+                let goalHtml = '<span class="text-slate-400 italic">ยังไม่ตั้งเป้าหมาย</span>';
+                if (u.goals && u.goals.main && Array.isArray(u.goals.main)) {
+                    goalHtml = u.goals.main.map(g => `<span class="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded text-[10px] m-0.5 inline-block shadow-sm">${g}</span>`).join('');
+                } else if (u.goals && u.goals.main) {
+                    goalHtml = `<span class="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded text-[10px] m-0.5 inline-block shadow-sm">${u.goals.main}</span>`; 
+                }
+
+                const reads = u.readHistory ? u.readHistory.length : 0;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition group">
+                        <td class="p-3 border-b text-slate-600">${u.room || '-'}</td>
+                        <td class="p-3 border-b text-slate-600 text-center">${u.number || '-'}</td>
+                        <td class="p-3 border-b">
+                            <div class="text-slate-500 text-xs">${u.id}</div>
+                            <div class="font-medium text-slate-800">${u.name}</div>
+                        </td>
+                        <td class="p-3 border-b max-w-[200px] leading-tight">${goalHtml}</td>
+                        <td class="p-3 border-b font-bold text-slate-700 text-center">${reads}</td>
+                        <td class="p-3 border-b font-bold text-indigo-600 text-center">${avg}</td>
+                        <td class="p-3 border-b text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button type="button" data-id="${u.id}" onclick="openEditStudentModal(this.dataset.id)" class="text-amber-500 hover:bg-amber-100 p-1.5 rounded-lg transition" title="แก้ไขข้อมูล"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                <button type="button" data-id="${u.id}" onclick="resetStudentGoal(this.dataset.id)" class="text-sky-500 hover:bg-sky-100 p-1.5 rounded-lg transition" title="รีเซตเป้าหมาย"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+                                <button type="button" data-id="${u.id}" onclick="deleteStudent(this.dataset.id)" class="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition" title="ลบนักเรียน"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function deleteStudent(id) {
+            const user = MOCK_USERS[id];
+            if (!user) {
+                showModal({ title: 'เกิดข้อผิดพลาด', message: 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ', type: 'error' });
+                return;
+            }
+            showModal({
+                title: 'ยืนยันการลบนักเรียน',
+                message: `คุณต้องการลบข้อมูลของ "${user.name}" ออกจากระบบใช่หรือไม่?\nประวัติการอ่านทั้งหมดของนักเรียนจะหายไป`,
+                type: 'warning',
+                showCancel: true,
+                onConfirm: () => {
+                    const studentName = user.name;
+                    delete MOCK_USERS[id];
+                    updateRoomFilterOptions();
+                    renderTeacherStudents();
+                    document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
+                    showModal({ title: 'ลบสำเร็จ', message: `ลบข้อมูลนักเรียน "${studentName}" สำเร็จ!`, type: 'success' });
+                }
+            });
+        }
+
+        function deleteRoom() {
+            const room = document.getElementById('teacher-room-filter').value;
+            if (room === 'all') return;
+            showModal({
+                title: '🚨 คำเตือนขั้นสุด!',
+                message: `คุณต้องการลบข้อมูลนักเรียน "ทุกคน" ในห้อง ${room} ใช่หรือไม่?\nการกระทำนี้ไม่สามารถย้อนกลับได้!`,
+                type: 'error',
+                showCancel: true,
+                onConfirm: () => {
+                    for(let key in MOCK_USERS) {
+                        if(MOCK_USERS[key].role === 'student' && MOCK_USERS[key].room === room) {
+                            delete MOCK_USERS[key];
+                        }
+                    }
+                    updateRoomFilterOptions();
+                    document.getElementById('teacher-room-filter').value = 'all'; 
+                    renderTeacherStudents();
+                    document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
+                    showModal({ title: 'ลบสำเร็จ', message: `ลบข้อมูลนักเรียนห้อง ${room} เรียบร้อยแล้ว`, type: 'success' });
+                }
+            });
+        }
+
+        function resetStudentGoal(id) {
+            const user = MOCK_USERS[id];
+            if (!user) {
+                showModal({ title: 'เกิดข้อผิดพลาด', message: 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ', type: 'error' });
+                return;
+            }
+            showModal({
+                title: 'ยืนยันการรีเซตเป้าหมาย',
+                message: `ยืนยันการรีเซตการตั้งเป้าหมายของ "${user.name}" ใช่หรือไม่?\n(นักเรียนจะต้องตั้งเป้าหมายใหม่เมื่อเข้าสู่ระบบครั้งถัดไป)`,
+                type: 'warning',
+                showCancel: true,
+                onConfirm: () => {
+                    MOCK_USERS[id].goals = null;
+                    renderTeacherStudents();
+                    showModal({ title: 'สำเร็จ', message: `รีเซตเป้าหมายของ "${user.name}" เรียบร้อยแล้ว!`, type: 'success' });
+                }
+            });
+        }
+
+        function resetRoomGoals() {
+            const room = document.getElementById('teacher-room-filter').value;
+            if (room === 'all') return;
+            showModal({
+                title: 'ยืนยันการรีเซตทั้งห้อง',
+                message: `ยืนยันการรีเซตเป้าหมายของนักเรียน "ทุกคน" ในห้อง ${room} ใช่หรือไม่?`,
+                type: 'warning',
+                showCancel: true,
+                onConfirm: () => {
+                    let count = 0;
+                    for(let key in MOCK_USERS) {
+                        if(MOCK_USERS[key].role === 'student' && MOCK_USERS[key].room === room) {
+                            MOCK_USERS[key].goals = null;
+                            count++;
+                        }
+                    }
+                    renderTeacherStudents();
+                    showModal({ title: 'สำเร็จ', message: `รีเซตเป้าหมายให้นักเรียนจำนวน ${count} คน เรียบร้อยแล้ว!`, type: 'success' });
+                }
+            });
+        }
+
+        function openEditStudentModal(id) {
+            const user = MOCK_USERS[id];
+            if (!user) return;
+            document.getElementById('edit-old-id').value = user.id;
+            document.getElementById('edit-id').value = user.id;
+            document.getElementById('edit-num').value = user.number || '';
+            document.getElementById('edit-name').value = user.name || '';
+            document.getElementById('edit-room').value = user.room || '';
+            document.getElementById('edit-pass').value = user.pass || '';
+            document.getElementById('edit-student-modal').classList.remove('hidden');
+        }
+
+        function closeEditStudentModal() {
+            document.getElementById('edit-student-modal').classList.add('hidden');
+            document.getElementById('edit-student-form').reset();
+        }
+
+        function submitEditStudent(e) {
+            e.preventDefault();
+            const oldId = document.getElementById('edit-old-id').value;
+            const newId = document.getElementById('edit-id').value.trim();
+            
+            if (oldId !== newId) {
+                if (MOCK_USERS[newId]) {
+                    showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีนักเรียนคนอื่นใช้ในระบบอยู่แล้วครับ!', type: 'error' });
+                    return;
+                }
+                MOCK_USERS[newId] = { ...MOCK_USERS[oldId], id: newId };
+                delete MOCK_USERS[oldId];
+            }
+            
+            MOCK_USERS[newId].number = document.getElementById('edit-num').value.trim();
+            MOCK_USERS[newId].name = document.getElementById('edit-name').value.trim();
+            MOCK_USERS[newId].room = document.getElementById('edit-room').value.trim();
+            MOCK_USERS[newId].pass = document.getElementById('edit-pass').value.trim();
+
+            closeEditStudentModal();
+            updateRoomFilterOptions();
+            renderTeacherStudents();
+            showModal({ title: 'บันทึกสำเร็จ', message: `บันทึกการแก้ไขข้อมูล: ${MOCK_USERS[newId].name} สำเร็จ!`, type: 'success' });
+        }
+
+        function openStudentProfileModal() {
+            if (!currentUser) return;
+            document.getElementById('profile-old-id').value = currentUser.id;
+            document.getElementById('profile-id').value = currentUser.id;
+            document.getElementById('profile-num').value = currentUser.number || '';
+            document.getElementById('profile-name').value = currentUser.name || '';
+            document.getElementById('profile-room').value = currentUser.room || '';
+            document.getElementById('profile-pass').value = currentUser.pass || '';
+            document.getElementById('student-profile-modal').classList.remove('hidden');
+        }
+
+        function closeStudentProfileModal() {
+            document.getElementById('student-profile-modal').classList.add('hidden');
+        }
+
+        function submitStudentProfile(e) {
+            e.preventDefault();
+            const oldId = document.getElementById('profile-old-id').value;
+            const newId = document.getElementById('profile-id').value.trim();
+            
+            if (oldId !== newId) {
+                if (MOCK_USERS[newId]) {
+                    showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้ครับ', type: 'error' });
+                    return;
+                }
+                MOCK_USERS[newId] = { ...MOCK_USERS[oldId], id: newId };
+                delete MOCK_USERS[oldId];
+                currentUser = MOCK_USERS[newId]; 
+            }
+            
+            currentUser.number = document.getElementById('profile-num').value.trim();
+            currentUser.name = document.getElementById('profile-name').value.trim();
+            currentUser.room = document.getElementById('profile-room').value.trim();
+            currentUser.pass = document.getElementById('profile-pass').value.trim();
+
+            document.getElementById('nav-student-name').innerText = currentUser.name;
+            document.getElementById('nav-student-id').innerText = `ID: ${currentUser.id}`;
+
+            closeStudentProfileModal();
+            showModal({ title: 'บันทึกสำเร็จ', message: 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว!', type: 'success' });
+        }
+
+        function exportToExcel() {
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            csvContent += "ห้อง,เลขที่,เลขประจำตัว,ชื่อ-สกุล,เป้าหมายหลัก,อ่านแล้ว(เรื่อง),คะแนนเฉลี่ย\n";
+            
+            let students = Object.values(MOCK_USERS).filter(u => u.role === 'student');
+            students.sort((a, b) => {
+                if (a.room !== b.room) return (a.room || '').localeCompare(b.room || '');
+                return parseInt(a.number || 0) - parseInt(b.number || 0);
+            });
+
+            students.forEach(u => {
+                let avg = "0.0";
+                if(u.scores && u.scores.length > 0) {
+                   let sum = u.scores.reduce((a,b)=>a+b.score, 0);
+                   avg = (sum/u.scores.length).toFixed(1);
+                }
+                let goal = u.goals && u.goals.main ? (Array.isArray(u.goals.main) ? u.goals.main.join(' + ') : u.goals.main) : "ยังไม่ตั้งเป้าหมาย";
+                let readCount = u.readHistory ? u.readHistory.length : 0;
+                csvContent += `${u.room || '-'},${u.number || '-'},${u.id},${u.name},${goal},${readCount},${avg}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "student_progress_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadTemplate(e) {
+            e.preventDefault();
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "เลขประจำตัวนักเรียน,เลขที่,ชื่อ-สกุล,ห้อง,รหัสผ่าน\n";
+            csvContent += "10001,1,เด็กชายสมมติ ทดสอบ,ม.1/1,12345678\n";
+            csvContent += "10002,2,เด็กหญิงเรียนดี ขยันยิ่ง,ม.1/1,12345678\n";
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "template_import_students.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function importStudentsMock(input) {
+            if(input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const text = e.target.result.replace(/^\uFEFF/, ''); 
+                    const lines = text.split(/\r?\n/); 
+                    let importedCount = 0;
+                    
+                    for(let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if(!line) continue;
+                        
+                        const cols = line.split(',');
+                        if(cols.length >= 4) {
+                            const id = cols[0].trim();
+                            const number = cols[1].trim();
+                            const name = cols[2].trim();
+                            const room = cols[3].trim();
+                            const pass = cols[4] ? cols[4].trim() : "12345678"; 
+                            
+                            if(id && id !== "") {
+                                MOCK_USERS[id] = {
+                                    id: id,
+                                    number: number,
+                                    name: name,
+                                    room: room,
+                                    pass: pass,
+                                    role: "student",
+                                    goals: null,
+                                    readHistory: [],
+                                    scores: []
+                                };
+                                importedCount++;
+                            }
+                        }
+                    }
+                    
+                    updateRoomFilterOptions();
+                    document.getElementById('teacher-room-filter').value = 'all';
+                    renderTeacherStudents(); 
+                    document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
+                    
+                    input.value = ''; 
+                    showModal({ title: 'นำเข้าสำเร็จ', message: `อัปโหลดและประมวลผลไฟล์สำเร็จ!\nนำเข้ารายชื่อนักเรียนใหม่จำนวน ${importedCount} คน เข้าสู่ระบบเรียบร้อยแล้ว`, type: 'success' });
+                };
+                
+                reader.readAsText(file, "windows-874"); 
+            }
+        }
+
+        function openAddStudentModal() {
+            document.getElementById('add-student-modal').classList.remove('hidden');
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('add-student-modal').classList.add('hidden');
+            document.getElementById('add-student-form').reset();
+        }
+
+        function submitNewStudent(e) {
+            e.preventDefault();
+            const id = document.getElementById('add-id').value.trim();
+            const num = document.getElementById('add-num').value.trim();
+            const name = document.getElementById('add-name').value.trim();
+            const room = document.getElementById('add-room').value.trim();
+            const pass = document.getElementById('add-pass').value.trim();
+
+            if(MOCK_USERS[id]) {
+                showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีในระบบอยู่แล้วครับ!', type: 'error' });
+                return;
+            }
+
+            MOCK_USERS[id] = {
+                id: id,
+                number: num,
+                name: name,
+                room: room,
+                pass: pass,
+                role: "student",
+                goals: null,
+                readHistory: [],
+                scores: []
+            };
+
+            closeAddStudentModal();
+            
+            updateRoomFilterOptions();
+            document.getElementById('teacher-room-filter').value = 'all';
+            renderTeacherStudents();
+            document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
+            
+            showModal({ title: 'เพิ่มสำเร็จ', message: `เพิ่มข้อมูลนักเรียน: ${name} สำเร็จ!`, type: 'success' });
+        }
+
+        function extractStoriesMock(e) {
+            e.preventDefault();
+            const btn = document.getElementById('extract-btn');
+            const num = document.getElementById('extract-num').value;
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="loader w-5 h-5 border-2 border-white border-t-transparent"></span> กำลังประมวลผลด้วย AI...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                document.getElementById('extract-form').reset();
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                
+                renderTeacherStories();
+                
+                showModal({ title: 'สร้างเนื้อหาสำเร็จ!', message: `ดึงข้อมูลด้วย AI สำเร็จ!\nระบบได้ทำการปรับระดับภาษา และเพิ่มบทความจำนวน ${num} เรื่อง เข้าสู่คลังบทอ่านเรียบร้อยแล้ว`, type: 'success' });
+            }, 2500);
+        }
+
+        function renderTeacherStories() {
+            const tbody = document.getElementById('teacher-stories-list');
+            tbody.innerHTML = '';
+            document.getElementById('teacher-story-count').innerText = STORIES.length;
+
+            STORIES.forEach(story => {
+                const statusHtml = story.isHidden 
+                    ? '<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-xs font-semibold flex items-center justify-center gap-1 w-24 mx-auto"><i data-lucide="eye-off" class="w-3 h-3"></i> ซ่อนอยู่</span>'
+                    : '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-semibold flex items-center justify-center gap-1 w-24 mx-auto"><i data-lucide="eye" class="w-3 h-3"></i> แสดงผล</span>';
+
+                const tagStyle = story.level === 'B1-B2' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition group ${story.isHidden ? 'opacity-60 bg-slate-50' : 'bg-white'}">
+                        <td class="p-3 border-b border-slate-100 text-center"><img src="${story.cover}" class="w-10 h-10 object-cover rounded-lg shadow-sm inline-block border border-slate-200"></td>
+                        <td class="p-3 border-b border-slate-100 text-slate-500 text-xs font-medium uppercase tracking-wide">${story.categoryName}</td>
+                        <td class="p-3 border-b border-slate-100 font-medium text-slate-800">
+                            <div class="flex items-center gap-2">
+                                ${story.title}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${tagStyle}">${story.level}</span>
+                            </div>
+                        </td>
+                        <td class="p-3 border-b border-slate-100 text-center">${statusHtml}</td>
+                        <td class="p-3 border-b border-slate-100 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button type="button" onclick="toggleHideStory('${story.id}')" class="${story.isHidden ? 'text-sky-500 hover:bg-sky-100' : 'text-amber-500 hover:bg-amber-100'} p-2 rounded-lg transition shadow-sm" title="${story.isHidden ? 'เปิดให้เด็กเห็น' : 'ซ่อนไม่ให้เด็กเห็น'}">
+                                    <i data-lucide="${story.isHidden ? 'eye' : 'eye-off'}" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" onclick="deleteStoryItem('${story.id}')" class="text-red-500 hover:bg-red-100 p-2 rounded-lg transition shadow-sm" title="ลบบทความทิ้งถาวร">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function toggleHideStory(id) {
+            const story = STORIES.find(s => s.id === id);
+            if (story) {
+                story.isHidden = !story.isHidden;
+                renderTeacherStories();
+            }
+        }
+
+        function deleteStoryItem(id) {
+            const storyIndex = STORIES.findIndex(s => s.id === id);
+            if (storyIndex > -1) {
+                showModal({
+                    title: 'ยืนยันการลบบทความ',
+                    message: `คุณต้องการลบ "${STORIES[storyIndex].title}" ออกจากระบบใช่หรือไม่?\nการลบนี้จะไม่สามารถย้อนกลับได้`,
+                    type: 'warning',
+                    showCancel: true,
+                    onConfirm: () => {
+                        STORIES.splice(storyIndex, 1);
+                        renderTeacherStories();
+                        showModal({ title: 'ลบสำเร็จ', message: 'ลบบทความออกจากคลังเรียบร้อยแล้ว', type: 'success' });
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
