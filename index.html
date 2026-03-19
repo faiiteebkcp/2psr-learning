@@ -1,14 +1,23 @@
 <!DOCTYPE html>
-<html lang="th">
+<!-- ป้องกันการแปลภาษาทั้งหน้าเว็บ -->
+<html lang="th" translate="no" class="notranslate">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
     <title>2PSR English Reading Platform</title>
+    
+    <!-- Firebase Compat SDKs (ระบบฐานข้อมูล และ Analytics) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics-compat.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- เพิ่ม Chart.js สำหรับแสดงกราฟ -->
+    <!-- Chart.js สำหรับแสดงกราฟ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
         body { font-family: 'Prompt', sans-serif; background-color: #f0fdfa; }
         .view { display: none; animation: fadeIn 0.4s ease-in-out; }
@@ -25,6 +34,9 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* ป้องกันการลากคลุมดำ (เฉพาะเนื้อหาอ่าน) */
+        .no-select { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
     </style>
 </head>
 <body class="text-slate-800">
@@ -88,12 +100,12 @@
                 
                 <form id="login-form" class="space-y-5" onsubmit="handleLogin(event)">
                     <div>
-                        <label id="label-username" class="block text-sm font-medium text-slate-700 mb-1">เลขประจำตัวนักเรียน (5 หลัก)</label>
-                        <input type="text" id="username" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none" placeholder="เช่น 12345" required>
+                        <label id="label-username" class="block text-sm font-medium text-slate-700 mb-1">รหัสประจำตัว (5 หลัก)</label>
+                        <input type="text" id="username" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน</label>
-                        <input type="password" id="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none" placeholder="ค่าเริ่มต้นคือ 12345678" required>
+                        <input type="password" id="password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none" required>
                     </div>
                     <button type="submit" id="login-submit-btn" class="w-full bg-sky-600 text-white py-3 rounded-xl hover:bg-sky-700 transition font-semibold shadow flex justify-center items-center gap-2">
                         เข้าสู่ระบบ <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -107,7 +119,7 @@
             <div class="mb-6 flex justify-between items-end">
                 <div>
                     <h2 class="text-3xl font-bold text-slate-800">Teacher Dashboard</h2>
-                    <p class="text-slate-500 mt-1">ระบบจัดการห้องเรียนและติดตามความก้าวหน้า</p>
+                    <p class="text-slate-500 mt-1">ระบบจัดการห้องเรียนและติดตามความก้าวหน้า (เชื่อมต่อ Firebase แล้ว 🟢)</p>
                 </div>
             </div>
 
@@ -122,33 +134,36 @@
             <div id="t-tab-dash" class="teacher-tab-content block">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-lg text-slate-800">สถิติภาพรวม (Overview)</h3>
-                    <select id="dash-room-filter" onchange="updateDashboardStats()" class="p-2 border rounded-lg outline-none focus:border-indigo-500 text-sm bg-white shadow-sm font-medium text-slate-700">
-                        <option value="all">นักเรียนทั้งหมด</option>
-                        <!-- Options จะถูกสร้างอัตโนมัติ -->
-                    </select>
+                    <div class="flex gap-2">
+                        <button onclick="refreshDashboardData()" class="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition" title="ดึงข้อมูลล่าสุด"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                        <select id="dash-room-filter" onchange="updateDashboardStats()" class="p-2 border rounded-lg outline-none focus:border-indigo-500 text-sm bg-white shadow-sm font-medium text-slate-700">
+                            <option value="all">นักเรียนทั้งหมด</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 transition hover:shadow-md">
                         <div class="bg-blue-100 p-4 rounded-full text-blue-600"><i data-lucide="users" class="w-8 h-8"></i></div>
                         <div><p class="text-slate-500 text-sm">จำนวนนักเรียน</p><p class="text-2xl font-bold text-slate-800"><span id="total-students-count">0</span> คน</p></div>
                     </div>
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 transition hover:shadow-md">
                         <div class="bg-emerald-100 p-4 rounded-full text-emerald-600"><i data-lucide="book-check" class="w-8 h-8"></i></div>
-                        <div><p class="text-slate-500 text-sm">เรื่องที่อ่านจบแล้วรวม</p><p class="text-2xl font-bold text-slate-800"><span id="dash-reads-count">0</span> ครั้ง</p></div>
+                        <div><p class="text-slate-500 text-sm">อ่านจบแล้วรวม</p><p class="text-2xl font-bold text-slate-800"><span id="dash-reads-count">0</span> ครั้ง</p></div>
                     </div>
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 transition hover:shadow-md">
                         <div class="bg-purple-100 p-4 rounded-full text-purple-600"><i data-lucide="brain-circuit" class="w-8 h-8"></i></div>
-                        <div><p class="text-slate-500 text-sm">การใช้ AI Scaffolding</p><p class="text-2xl font-bold text-slate-800"><span id="dash-ai-count">0</span> ครั้ง</p></div>
+                        <div><p class="text-slate-500 text-sm">ใช้ AI ใบ้คำ</p><p class="text-2xl font-bold text-slate-800"><span id="dash-ai-count">0</span> ครั้ง</p></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-rose-100 flex items-center gap-4 transition hover:shadow-md">
+                        <div class="bg-rose-100 p-4 rounded-full text-rose-600"><i data-lucide="eye-off" class="w-8 h-8"></i></div>
+                        <div><p class="text-slate-500 text-sm">แอบสลับหน้าจอ</p><p class="text-2xl font-bold text-slate-800"><span id="dash-warning-count">0</span> ครั้ง</p></div>
                     </div>
                 </div>
 
-                <!-- ส่วนของกราฟประมวลผล -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
                     <h3 class="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="pie-chart" class="text-indigo-600 w-5 h-5"></i> การประมวลผลเชิงสถิติ (Analytics)</h3>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        
-                        <!-- กราฟ 1: สัดส่วนเป้าหมาย -->
                         <div class="border border-slate-100 bg-slate-50 rounded-xl p-5">
                             <h4 class="text-center font-bold text-slate-700 mb-1 text-sm">สัดส่วนเป้าหมายหลัก (SRL Goals)</h4>
                             <p class="text-xs text-center text-slate-500 mb-4">(นักเรียนสามารถเลือกได้มากกว่า 1 ข้อ)</p>
@@ -156,24 +171,18 @@
                                 <canvas id="goalChart"></canvas>
                             </div>
                         </div>
-
-                        <!-- กราฟ 2: ช่วงคะแนนเฉลี่ย -->
                         <div class="border border-slate-100 bg-slate-50 rounded-xl p-5">
                             <h4 class="text-center font-bold text-slate-700 mb-4 text-sm">การกระจายตัวของคะแนนเฉลี่ยแบบประเมิน</h4>
                             <div class="relative h-64 w-full">
                                 <canvas id="scoreChart"></canvas>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
-                <!-- วิเคราะห์ความนิยมของเนื้อหา -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
                     <h3 class="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-indigo-600 w-5 h-5"></i> วิเคราะห์ความนิยมเนื้อหา (Content Popularity)</h3>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        
-                        <!-- ตารางหมวดหมู่ -->
                         <div class="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
                             <div class="bg-indigo-50 p-4 border-b border-indigo-100 font-bold text-indigo-800 text-sm flex justify-between items-center">
                                 <span>ความนิยมรายหมวดหมู่</span>
@@ -181,14 +190,10 @@
                             </div>
                             <div class="max-h-[320px] overflow-y-auto">
                                 <table class="w-full text-left text-sm">
-                                    <tbody id="dash-cat-popularity" class="divide-y divide-slate-100">
-                                        <!-- Injected via JS -->
-                                    </tbody>
+                                    <tbody id="dash-cat-popularity" class="divide-y divide-slate-100"></tbody>
                                 </table>
                             </div>
                         </div>
-
-                        <!-- ตารางบทอ่าน Top 10 -->
                         <div class="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
                             <div class="bg-sky-50 p-4 border-b border-sky-100 font-bold text-sky-800 text-sm flex justify-between items-center">
                                 <span>ความนิยมรายบทอ่าน (Top 10)</span>
@@ -196,13 +201,10 @@
                             </div>
                             <div class="max-h-[320px] overflow-y-auto">
                                 <table class="w-full text-left text-sm">
-                                    <tbody id="dash-story-popularity" class="divide-y divide-slate-100">
-                                        <!-- Injected via JS -->
-                                    </tbody>
+                                    <tbody id="dash-story-popularity" class="divide-y divide-slate-100"></tbody>
                                 </table>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -217,7 +219,6 @@
                                 <option value="all">ดูทั้งหมด</option>
                             </select>
                             
-                            <!-- ปุ่มจัดการทั้งห้อง -->
                             <div id="room-actions-group" class="hidden flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
                                 <button onclick="resetRoomGoals()" type="button" class="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition flex items-center gap-1" title="รีเซตเป้าหมายทุกคนในห้องนี้">
                                     <i data-lucide="rotate-ccw" class="w-3 h-3"></i> รีเซตเป้าหมาย
@@ -242,7 +243,7 @@
                                 </div>
                             </div>
                             <button onclick="exportToExcel()" type="button" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-indigo-700 transition shadow">
-                                <i data-lucide="download-cloud" class="w-4 h-4"></i> ส่งออกความก้าวหน้า
+                                <i data-lucide="download-cloud" class="w-4 h-4"></i> ส่งออกข้อมูล
                             </button>
                         </div>
                     </div>
@@ -254,15 +255,13 @@
                                     <th class="p-3 font-medium">ห้อง</th>
                                     <th class="p-3 font-medium text-center">เลขที่</th>
                                     <th class="p-3 font-medium">รหัส/ชื่อ</th>
-                                    <th class="p-3 font-medium">เป้าหมายหลัก (ที่นักเรียนเลือก)</th>
+                                    <th class="p-3 font-medium text-center" title="จำนวนครั้งที่สลับแท็บ/หน้าจอระหว่างสอบ">⚠️ สลับจอ</th>
                                     <th class="p-3 font-medium text-center">อ่านแล้ว</th>
                                     <th class="p-3 font-medium text-center">คะแนนเฉลี่ย</th>
                                     <th class="p-3 font-medium text-center w-28">จัดการ</th>
                                 </tr>
                             </thead>
-                            <tbody id="teacher-students-list" class="text-sm divide-y divide-slate-100">
-                                <!-- Injected via JS -->
-                            </tbody>
+                            <tbody id="teacher-students-list" class="text-sm divide-y divide-slate-100"></tbody>
                         </table>
                     </div>
                 </div>
@@ -324,9 +323,7 @@
                                         <th class="p-3 font-medium text-center w-28">จัดการ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="teacher-stories-list" class="text-sm divide-y divide-slate-100">
-                                    <!-- Injected via JS -->
-                                </tbody>
+                                <tbody id="teacher-stories-list" class="text-sm divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
                     </div>
@@ -388,7 +385,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl hover:bg-emerald-700 transition font-semibold shadow-md flex justify-center items-center gap-2">
+                    <button type="submit" id="btn-save-goal" class="w-full bg-emerald-600 text-white py-3 rounded-xl hover:bg-emerald-700 transition font-semibold shadow-md flex justify-center items-center gap-2">
                         <i data-lucide="save" class="w-5 h-5"></i> บันทึกเป้าหมายและไปที่ชั้นหนังสือ
                     </button>
                 </form>
@@ -407,10 +404,7 @@
                     <strong id="display-goal" class="text-sky-700 text-base block mt-1 leading-tight"></strong>
                 </div>
             </div>
-
-            <div id="categories-container" class="space-y-10">
-                <!-- Injected via JS -->
-            </div>
+            <div id="categories-container" class="space-y-10"></div>
         </div>
 
         <!-- 5. READING & SCAFFOLDING VIEW (P&S) -->
@@ -445,9 +439,8 @@
                             <span>เคล็ดลับ 2PSR: หากไม่รู้ความหมายคำศัพท์ ห้ามเปิดแปลภาษา! ให้ <b>คลิกที่คำศัพท์</b> เพื่อให้ AI ช่วยใบ้คำ (Scaffolding Hint)</span>
                         </div>
                         
-                        <div id="read-content" class="text-lg leading-loose text-slate-700 font-medium space-y-4">
-                            <!-- Content injected via JS -->
-                        </div>
+                        <!-- Anti-Copy & Anti-Translate Area -->
+                        <div id="read-content" class="text-lg leading-loose text-slate-700 font-medium space-y-4 notranslate no-select" oncopy="return false" oncut="return false" onpaste="return false" oncontextmenu="return false"></div>
                     </div>
                 </div>
 
@@ -482,7 +475,8 @@
                 <p class="text-slate-500 mb-6 pb-6 border-b">เรื่อง: <span id="quiz-title-display" class="font-semibold text-slate-700"></span></p>
 
                 <form id="quiz-form" onsubmit="submitQuiz(event)">
-                    <div id="mcq-container" class="space-y-6 mb-8"></div>
+                    <!-- ป้องกันคลิกขวาก๊อปปี้แบบทดสอบ -->
+                    <div id="mcq-container" class="space-y-6 mb-8 notranslate no-select" oncopy="return false" oncut="return false" oncontextmenu="return false"></div>
 
                     <div class="bg-sky-50 p-6 rounded-xl border border-sky-100 mb-6">
                         <h3 class="font-bold text-sky-800 mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-5 h-5"></i> สรุปใจความสำคัญ (Story Summary)</h3>
@@ -562,14 +556,13 @@
 
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 class="font-bold text-lg mb-4 text-slate-800">ประวัติการอ่าน (Reading History)</h3>
-                <div id="prog-history-list" class="space-y-3">
-                    <!-- History injected via JS -->
-                </div>
+                <div id="prog-history-list" class="space-y-3"></div>
             </div>
         </div>
 
     </main>
 
+    <!-- Modals สำหรับจัดการนักเรียน -->
     <!-- Add Student Modal -->
     <div id="add-student-modal" class="fixed inset-0 bg-slate-900/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
@@ -601,7 +594,7 @@
                 </div>
                 <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeAddStudentModal()" class="w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
-                    <button type="submit" class="w-1/2 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold shadow-md">บันทึกข้อมูล</button>
+                    <button type="submit" id="btn-submit-add" class="w-1/2 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold shadow-md">บันทึกข้อมูล</button>
                 </div>
             </form>
         </div>
@@ -639,7 +632,7 @@
                 </div>
                 <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeEditStudentModal()" class="w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
-                    <button type="submit" class="w-1/2 px-4 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-semibold shadow-md">บันทึกการแก้ไข</button>
+                    <button type="submit" id="btn-submit-edit" class="w-1/2 px-4 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-semibold shadow-md">บันทึกการแก้ไข</button>
                 </div>
             </form>
         </div>
@@ -677,7 +670,7 @@
                 </div>
                 <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeStudentProfileModal()" class="w-1/2 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-semibold">ยกเลิก</button>
-                    <button type="submit" class="w-1/2 px-4 py-3 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition font-semibold shadow-md">บันทึกข้อมูล</button>
+                    <button type="submit" id="btn-submit-profile" class="w-1/2 px-4 py-3 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition font-semibold shadow-md">บันทึกข้อมูล</button>
                 </div>
             </form>
         </div>
@@ -721,9 +714,7 @@
                             <th class="p-3 font-semibold text-slate-700 border-b">ชื่อ-สกุล</th>
                         </tr>
                     </thead>
-                    <tbody id="readers-modal-list" class="divide-y divide-slate-100 bg-white">
-                        <!-- Injected via JS -->
-                    </tbody>
+                    <tbody id="readers-modal-list" class="divide-y divide-slate-100 bg-white"></tbody>
                 </table>
             </div>
         </div>
@@ -731,21 +722,110 @@
 
     <script>
         // ==========================================
-        // CONFIG & API (ระบบ Fallback รุ่น AI สำรอง)
+        // CONFIG FIREBASE & AI
         // ==========================================
-        const apiKey = ""; 
-        const NETLIFY_API_KEY = "AIzaSyCybyYJNdSxWkWwALMifY6rpcQFrQLWF1I"; 
-        const activeKey = apiKey || NETLIFY_API_KEY;
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwhEt8K8zFuvnBWtea3j7VasTNbgfIN_Q",
+            authDomain: "psr-learning.firebaseapp.com",
+            projectId: "psr-learning",
+            storageBucket: "psr-learning.firebasestorage.app",
+            messagingSenderId: "390928479347",
+            appId: "1:390928479347:web:cccfe6be6bc4095f50e606",
+            measurementId: "G-LYZ8WH2BJ0"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        let analytics;
+        if (typeof firebase.analytics === "function") {
+            analytics = firebase.analytics();
+        }
+
+        const GEMINI_API_KEY = "AIzaSyCybyYJNdSxWkWwALMifY6rpcQFrQLWF1I"; 
 
         // ==========================================
         // APP STATE & ICONS
         // ==========================================
+        let currentView = 'login'; // ตัวแปรเก็บหน้าที่กำลังเปิดอยู่
         let currentUser = null;
         let currentStory = null;
         let currentScore = 0;
         let isWaitingForAI = false;
+        let allStudentsCache = []; 
 
         lucide.createIcons();
+
+        // ==========================================
+        // ระบบป้องการการโกง (ANTI-CHEAT SYSTEM)
+        // ==========================================
+        document.addEventListener("visibilitychange", async () => {
+            // ถ้านักเรียนซ่อนหน้าจอ หรือสลับแท็บ และกำลังอยู่ในหน้า อ่านเนื้อเรื่อง หรือ ทำควิซ
+            if (document.hidden && currentUser && currentUser.role === 'student' && (currentView === 'reading' || currentView === 'quiz')) {
+                
+                showModal({
+                    title: '🚨 ตรวจพบการสลับหน้าจอ!',
+                    message: 'ระบบตรวจพบการสลับแท็บหรือเปิดแอปพลิเคชันอื่นระหว่างการทดสอบ\nกรุณาตั้งใจอ่านและทำความเข้าใจด้วยตนเองนะครับ\n(พฤติกรรมนี้ถูกบันทึกส่งให้คุณครูผู้สอนแล้ว)',
+                    type: 'error'
+                });
+                
+                // บันทึกจำนวนครั้งที่สลับหน้าจอลง Firebase
+                try {
+                    currentUser.warnings = (currentUser.warnings || 0) + 1;
+                    await db.collection("users").doc(currentUser.id).update({ 
+                        warnings: currentUser.warnings 
+                    });
+                } catch(e) {
+                    console.error("Failed to save warning", e);
+                }
+            }
+        });
+
+        // ==========================================
+        // INITIALIZE FIREBASE
+        // ==========================================
+        async function initDB() {
+            try {
+                const teacherRef = db.collection("users").doc("Kotcha");
+                const doc = await teacherRef.get();
+                if (!doc.exists) {
+                    await teacherRef.set({ id: "Kotcha", name: "คุณครู Kotcha", pass: "K123456", role: "teacher" });
+                }
+                
+                const studentRef = db.collection("users").doc("12345");
+                const sDoc = await studentRef.get();
+                if (!sDoc.exists) {
+                    await studentRef.set({ id: "12345", number: "1", name: "เด็กชายสมชาย รักดี", pass: "12345678", role: "student", room: "ม.1/1", goals: null, readHistory: [], scores: [], warnings: 0 });
+                }
+
+                const sysRef = db.collection("system").doc("data");
+                const sysDoc = await sysRef.get();
+                if (sysDoc.exists) {
+                    const data = sysDoc.data();
+                    if(data.hiddenIds) {
+                        STORIES.forEach(s => {
+                            if(data.hiddenIds.includes(s.id)) s.isHidden = true;
+                        });
+                    }
+                    if(data.customStories) {
+                        STORIES.push(...data.customStories);
+                    }
+                } else {
+                    await sysRef.set({ hiddenIds: [], customStories: [] });
+                }
+            } catch(e) {
+                console.error("Firebase init error:", e);
+            }
+        }
+        window.addEventListener('DOMContentLoaded', initDB);
+
+        async function fetchStudents() {
+            try {
+                const snapshot = await db.collection("users").where("role", "==", "student").get();
+                allStudentsCache = snapshot.docs.map(doc => doc.data());
+            } catch(e) {
+                console.error("Fetch students error:", e);
+            }
+        }
 
         // ==========================================
         // CUSTOM MODAL LOGIC
@@ -796,15 +876,9 @@
         }
 
         // ==========================================
-        // MOCK DATABASE 
+        // DATABASE: STORY & CATEGORY (STATIC BASE)
         // ==========================================
         let loginMode = 'student'; 
-
-        const MOCK_USERS = {
-            "12345": { id: "12345", number: "1", name: "เด็กชายสมชาย รักดี", pass: "12345678", role: "student", room: "ม.1/1", goals: null, readHistory: [], scores: [] },
-            "Kotcha": { id: "Kotcha", name: "คุณครู Kotcha", pass: "K123456", role: "teacher" }
-        };
-
         const CATEGORIES = [
             { id: "c1", name: "My Digital Life", icon: "laptop", color: "text-blue-500", bg: "bg-blue-100" },
             { id: "c2", name: "Hobbies", icon: "palette", color: "text-purple-500", bg: "bg-purple-100" },
@@ -887,7 +961,6 @@
             }
         });
 
-        // 1 เรื่องตัวอย่าง
         const sarahStory = STORIES.find(s => s.id === 'c1-a1-s1');
         if(sarahStory) {
             sarahStory.title = "Sarah's Smartphone Rules";
@@ -898,6 +971,7 @@
         // UI NAVIGATION & LOGIN LOGIC
         // ==========================================
         function navigate(viewId) {
+            currentView = viewId;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
             window.scrollTo(0, 0);
@@ -916,7 +990,7 @@
                 btnT.className = "flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition";
                 document.getElementById('login-title').innerText = "เข้าสู่ระบบนักเรียน";
                 document.getElementById('login-subtitle').innerText = "โรงเรียนน้ำพองศึกษา";
-                document.getElementById('label-username').innerText = "เลขประจำตัวนักเรียน (5 หลัก)";
+                document.getElementById('label-username').innerText = "รหัสประจำตัว (5 หลัก)";
                 document.getElementById('username').placeholder = "เช่น 12345";
                 document.getElementById('login-submit-btn').className = "w-full bg-sky-600 text-white py-3 rounded-xl hover:bg-sky-700 transition font-semibold shadow flex justify-center items-center gap-2";
                 document.getElementById('login-icon').setAttribute('data-lucide', 'graduation-cap');
@@ -935,33 +1009,51 @@
             lucide.createIcons();
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
-            const id = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
+            const id = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            
+            const btn = document.getElementById('login-submit-btn');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '<span class="loader w-5 h-5 border-2 border-white border-t-transparent"></span>';
+            btn.disabled = true;
 
-            if (MOCK_USERS[id] && MOCK_USERS[id].pass === pass) {
-                currentUser = MOCK_USERS[id];
-                
-                if(currentUser.role === 'teacher') {
-                    document.getElementById('teacher-nav').classList.remove('hidden');
-                    document.getElementById('student-nav').classList.add('hidden');
-                    updateRoomFilterOptions(); 
-                    renderTeacherStudents();
-                    navigate('teacher');
-                    updateDashboardStats();
-                } else {
-                    document.getElementById('student-nav').classList.remove('hidden');
-                    document.getElementById('teacher-nav').classList.add('hidden');
-                    document.getElementById('nav-student-name').innerText = currentUser.name;
-                    document.getElementById('nav-student-id').innerText = `ID: ${currentUser.id}`;
+            try {
+                const doc = await db.collection("users").doc(id).get();
+                if (doc.exists && doc.data().pass === pass) {
+                    currentUser = doc.data();
                     
-                    if (!currentUser.goals) navigate('goal');
-                    else navigate('storybook');
+                    if(currentUser.role === 'teacher') {
+                        document.getElementById('teacher-nav').classList.remove('hidden');
+                        document.getElementById('student-nav').classList.add('hidden');
+                        await fetchStudents();
+                        updateRoomFilterOptions(); 
+                        renderTeacherStudents();
+                        navigate('teacher');
+                        updateDashboardStats();
+                    } else {
+                        if(!currentUser.readHistory) currentUser.readHistory = [];
+                        if(!currentUser.scores) currentUser.scores = [];
+                        if(!currentUser.warnings) currentUser.warnings = 0;
+                        
+                        document.getElementById('student-nav').classList.remove('hidden');
+                        document.getElementById('teacher-nav').classList.add('hidden');
+                        document.getElementById('nav-student-name').innerText = currentUser.name;
+                        document.getElementById('nav-student-id').innerText = `ID: ${currentUser.id}`;
+                        
+                        if (!currentUser.goals || !currentUser.goals.main) navigate('goal');
+                        else navigate('storybook');
+                    }
+                } else {
+                    showModal({ title: 'เข้าสู่ระบบไม่สำเร็จ', message: 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง', type: 'error' });
                 }
-            } else {
-                showModal({ title: 'เข้าสู่ระบบไม่สำเร็จ', message: 'ข้อมูลไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง', type: 'error' });
+            } catch(e) {
+                console.error(e);
+                showModal({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถเชื่อมต่อฐานข้อมูล Firebase ได้', type: 'error' });
             }
+            btn.innerHTML = origText;
+            btn.disabled = false;
         }
 
         function logout() {
@@ -975,23 +1067,34 @@
         // ==========================================
         // P - PLANNING
         // ==========================================
-        function saveGoals(e) {
+        async function saveGoals(e) {
             e.preventDefault();
-            
             const checkedBoxes = document.querySelectorAll('input[name="mainGoal"]:checked');
             if(checkedBoxes.length === 0) {
                 showModal({ title: 'เกิดข้อผิดพลาด', message: 'กรุณาเลือกเป้าหมายการอ่านอย่างน้อย 1 ข้อครับ', type: 'warning' });
                 return;
             }
             
-            const selectedGoals = Array.from(checkedBoxes).map(cb => cb.value);
+            const btn = document.getElementById('btn-save-goal');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="loader w-5 h-5 border-2 border-white border-t-transparent"></span> กำลังบันทึก...';
+            btn.disabled = true;
 
+            const selectedGoals = Array.from(checkedBoxes).map(cb => cb.value);
             currentUser.goals = { 
                 main: selectedGoals,
                 catCount: parseInt(document.getElementById('catGoal').value),
                 storyCount: parseInt(document.getElementById('storyGoal').value)
             };
-            navigate('storybook');
+
+            try {
+                await db.collection("users").doc(currentUser.id).update({ goals: currentUser.goals });
+                navigate('storybook');
+            } catch(e) {
+                showModal({ title: 'บันทึกไม่สำเร็จ', message: 'มีปัญหาในการเชื่อมต่อฐานข้อมูล', type: 'error' });
+            }
+            btn.innerHTML = orig;
+            btn.disabled = false;
         }
 
         function renderStorybook() {
@@ -1079,50 +1182,39 @@
 
         async function askHint(word, element) {
             if(isWaitingForAI) return;
-            
             document.querySelectorAll('.clickable-word').forEach(el => el.style.backgroundColor = 'transparent');
             if(element) element.style.backgroundColor = '#e0f2fe';
-
             addChatMessage('user', `ช่วยใบ้คำว่า "${word}" หน่อยครับ`);
-            
             const prompt = `You are an AI assistant in an English learning app for Thai 7th graders. The student clicked the word "${word}" in the story "${currentStory.title}" (Level: ${currentStory.level}). 
             Task: Give a short hint in Thai to help them guess the meaning. DO NOT give the direct Thai translation. Give an example or explain simply. Keep it under 2 sentences.`;
-            
             await callGeminiToChat(prompt);
         }
 
         async function handleChat(e) {
             e.preventDefault();
             if(isWaitingForAI) return;
-
             const input = document.getElementById('chat-input');
             const msg = input.value.trim();
             if(!msg) return;
-
             addChatMessage('user', msg);
             input.value = '';
-
             const prompt = `You are an AI assistant in an English learning app for Thai 7th graders reading "${currentStory.title}" (Level: ${currentStory.level}).
             Student asks: "${msg}".
             Task: Act as a scaffolding teacher. Help them understand, but DO NOT give direct translations. Give hints or explain in simple Thai.`;
-
             await callGeminiToChat(prompt);
         }
 
         function addChatMessage(sender, text) {
             const history = document.getElementById('chat-history');
             const isUser = sender === 'user';
-            
             let html = '';
             if(isUser) {
                 html = `<div class="flex gap-3 flex-row-reverse"><div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0"><i data-lucide="user" class="w-4 h-4"></i></div><div class="bg-sky-600 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm max-w-[85%]">${text}</div></div>`;
             } else {
                 html = `<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 flex-shrink-0"><i data-lucide="bot" class="w-4 h-4"></i></div><div class="bg-white border border-sky-100 p-3 rounded-2xl rounded-tl-none text-sm text-slate-700 shadow-sm max-w-[85%]">${text === 'loading' ? '<span class="loader"></span>' : text}</div></div>`;
             }
-            
             const prevLoadings = history.querySelectorAll('.loader');
             if(prevLoadings.length > 0 && !isUser) history.lastElementChild.remove();
-
             history.innerHTML += html;
             history.scrollTop = history.scrollHeight;
             lucide.createIcons();
@@ -1135,7 +1227,6 @@
             document.getElementById('quiz-title-display').innerText = currentStory.title;
             const container = document.getElementById('mcq-container');
             container.innerHTML = '';
-
             currentStory.quiz.forEach((q, index) => {
                 let optionsHtml = '';
                 q.options.forEach((opt, optIdx) => {
@@ -1143,7 +1234,6 @@
                 });
                 container.innerHTML += `<div class="bg-slate-50 p-5 rounded-xl border border-slate-200"><p class="font-bold text-slate-800 mb-3">${index + 1}. ${q.q}</p><div class="space-y-2">${optionsHtml}</div></div>`;
             });
-
             document.getElementById('summary-input').value = '';
             document.getElementById('reflection-input').value = '';
             navigate('quiz');
@@ -1151,7 +1241,11 @@
 
         async function submitQuiz(e) {
             e.preventDefault();
-            
+            const btn = document.getElementById('submit-quiz-btn');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="loader w-5 h-5 border-2 border-white border-t-transparent"></span>';
+            btn.disabled = true;
+
             let score = 0;
             currentStory.quiz.forEach((q, index) => {
                 const selected = document.querySelector(`input[name="q${index}"]:checked`);
@@ -1164,6 +1258,15 @@
             }
             currentUser.scores.push({ storyId: currentStory.id, score: score });
 
+            try {
+                await db.collection("users").doc(currentUser.id).update({ 
+                    readHistory: currentUser.readHistory, 
+                    scores: currentUser.scores 
+                });
+            } catch(error) {
+                showModal({ title: 'เตือน', message: 'ไม่สามารถบันทึกคะแนนลงฐานข้อมูลได้', type: 'error' });
+            }
+
             const summaryText = document.getElementById('summary-input').value;
             const reflectionText = document.getElementById('reflection-input').value;
             const goalTextForAI = Array.isArray(currentUser.goals.main) ? currentUser.goals.main.join(', ') : currentUser.goals.main;
@@ -1171,6 +1274,9 @@
             document.getElementById('score-display').innerText = currentScore;
             document.getElementById('ai-feedback-content').innerHTML = '<div class="text-center py-4"><span class="loader"></span><p class="mt-2 text-sky-600 text-sm">AI กำลังวิเคราะห์ผลและเขียนคำแนะนำ...</p></div>';
             navigate('feedback');
+            
+            btn.innerHTML = orig;
+            btn.disabled = false;
 
             const prompt = `You are an AI teacher evaluating a Thai 7th grader using the 2PSR Model. 
             Story read: "${currentStory.title}" (Level: ${currentStory.level}).
@@ -1185,7 +1291,6 @@
                 const feedback = await generateGeminiText(prompt);
                 document.getElementById('ai-feedback-content').innerHTML = feedback.replace(/\n/g, '<br>');
             } catch (error) {
-                console.error("Feedback Error:", error);
                 document.getElementById('ai-feedback-content').innerHTML = `<div class="text-red-500 text-center py-4">❌ <b>เกิดข้อผิดพลาดในการเชื่อมต่อ AI:</b><br>${error.message}<br><span class="text-xs text-slate-500 mt-2 inline-block">กรุณากดรีเฟรชหน้าเว็บและลองใหม่อีกครั้ง</span></div>`;
             }
         }
@@ -1226,7 +1331,7 @@
             if(currentUser.readHistory.length === 0) {
                 list.innerHTML = '<p class="text-slate-500 text-sm">ยังไม่มีประวัติการอ่าน เริ่มอ่านเรื่องแรกกันเลย!</p>';
             } else {
-                currentUser.scores.reverse().forEach(record => {
+                currentUser.scores.slice().reverse().forEach(record => {
                     const story = STORIES.find(s => s.id === record.storyId);
                     list.innerHTML += `
                         <div class="flex justify-between items-center p-3 hover:bg-slate-50 rounded-lg border border-slate-100 transition">
@@ -1248,7 +1353,7 @@
         }
 
         // ==========================================
-        // GEMINI API UTILS (ระบบ Fallback แบบใหม่)
+        // GEMINI API UTILS
         // ==========================================
         async function callGeminiToChat(prompt) {
             isWaitingForAI = true;
@@ -1257,7 +1362,6 @@
                 const text = await generateGeminiText(prompt);
                 addChatMessage('ai', text);
             } catch (error) {
-                console.error("Chat Error:", error);
                 addChatMessage('ai', `❌ <b>เกิดข้อผิดพลาด:</b> ${error.message} <br><span class="text-xs text-slate-500 mt-1 block">ลองกดถามใหม่อีกครั้ง หรือรีเฟรชหน้าเว็บครับ 😅</span>`);
             } finally {
                 isWaitingForAI = false;
@@ -1266,41 +1370,37 @@
 
         async function generateGeminiText(prompt) {
             const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } };
-            
-            // เตรียมโมเดลไว้ 3 รุ่น เผื่อรุ่นไหนตายหรือหมดอายุ ระบบจะข้ามไปลองรุ่นถัดไปอัตโนมัติ
-            const modelsToTry = apiKey ? ["gemini-2.5-flash-preview-09-2025"] : ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"];
+            const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.5-flash-preview-09-2025", "gemini-pro"];
             let lastError = null;
 
             for (let model of modelsToTry) {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
                 try {
-                    const response = await fetch(url, { 
-                        method: "POST", 
-                        headers: { "Content-Type": "application/json" }, 
-                        body: JSON.stringify(payload) 
-                    });
-                    
+                    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                     const data = await response.json();
-                    
                     if (response.ok && data.candidates && data.candidates[0].content) {
                         return data.candidates[0].content.parts[0].text;
                     } else if (!response.ok) {
-                        lastError = new Error(`API Error [${response.status}] for ${model}: ${data.error?.message || response.statusText}`);
-                        console.warn(lastError.message); // แจ้งเตือนเงียบๆ แล้วลุยลองโมเดลถัดไป
+                        lastError = new Error(`[${model}] ${data.error?.message}`);
                         continue; 
-                    } else if (data.promptFeedback) {
-                        throw new Error("คำสั่งถูกบล็อกด้วยระบบความปลอดภัยของ Google");
                     }
                 } catch (error) {
                     lastError = error;
                 }
             }
-            throw lastError || new Error("รูปแบบข้อมูลจาก AI ไม่ถูกต้อง หรือไม่สามารถเชื่อมต่อโมเดลได้เลย");
+            throw lastError || new Error("รูปแบบข้อมูลจาก AI ไม่ถูกต้อง");
         }
 
         // ==========================================
         // TEACHER DASHBOARD LOGIC
         // ==========================================
+        async function refreshDashboardData() {
+            await fetchStudents();
+            updateRoomFilterOptions();
+            updateDashboardStats();
+            showModal({ title: 'อัปเดตข้อมูล', message: 'ดึงข้อมูลล่าสุดจากฐานข้อมูล Firebase แล้ว!', type: 'success' });
+        }
+
         function updateRoomFilterOptions() {
             const selectStudents = document.getElementById('teacher-room-filter');
             const selectDash = document.getElementById('dash-room-filter');
@@ -1308,27 +1408,17 @@
             const currentDashVal = selectDash.value;
             
             const rooms = new Set();
-            Object.values(MOCK_USERS).forEach(u => {
-                if(u.role === 'student' && u.room) {
-                    rooms.add(u.room);
-                }
-            });
-            
+            allStudentsCache.forEach(u => { if(u.room) rooms.add(u.room); });
             const sortedRooms = Array.from(rooms).sort();
             
             let html = '<option value="all">นักเรียนทั้งหมด (All)</option>';
-            sortedRooms.forEach(room => {
-                html += `<option value="${room}">${room}</option>`;
-            });
+            sortedRooms.forEach(room => { html += `<option value="${room}">${room}</option>`; });
             
             selectStudents.innerHTML = html;
             selectDash.innerHTML = html;
             
             if (currentStudentsVal === 'all' || sortedRooms.includes(currentStudentsVal)) selectStudents.value = currentStudentsVal;
-            else selectStudents.value = 'all';
-
             if (currentDashVal === 'all' || sortedRooms.includes(currentDashVal)) selectDash.value = currentDashVal;
-            else selectDash.value = 'all';
         }
 
         let chartGoalInstance = null;
@@ -1336,36 +1426,30 @@
 
         function updateDashboardStats() {
             const roomFilter = document.getElementById('dash-room-filter').value;
-            const students = Object.values(MOCK_USERS).filter(u => u.role === 'student' && (roomFilter === 'all' || u.room === roomFilter));
+            const students = allStudentsCache.filter(u => (roomFilter === 'all' || u.room === roomFilter));
             
             const totalStudents = students.length || 1; 
-            
             let totalReads = 0;
             let aiUsageMock = 0;
+            let totalWarnings = 0;
             
             const goalCounts = { "จับใจความ": 0, "เดาศัพท์": 0, "วิเคราะห์": 0, "สร้างวินัย": 0, "ยังไม่ตั้งเป้าหมาย": 0 };
             const scoreRanges = { "ดีเยี่ยม (4-5)": 0, "ปานกลาง (3-3.9)": 0, "ปรับปรุง (0-2.9)": 0, "ยังไม่มีคะแนน": 0 };
-            
             const catStats = CATEGORIES.map(c => ({ id: c.id, name: c.name, count: 0, percent: 0 }));
             const storyStats = STORIES.map(s => ({ id: s.id, categoryName: s.categoryName, title: s.title, level: s.level, count: 0, percent: 0 }));
 
             students.forEach(s => {
                 const reads = s.readHistory ? s.readHistory.length : 0;
                 totalReads += reads;
-                aiUsageMock += reads * Math.floor(Math.random() * 3 + 1); 
+                aiUsageMock += reads * 2; 
+                totalWarnings += (s.warnings || 0);
                 
                 if (s.goals && s.goals.main) {
                     let goalsArr = Array.isArray(s.goals.main) ? s.goals.main : [s.goals.main];
                     if (goalsArr.length > 0) {
-                        goalsArr.forEach(g => {
-                            if(goalCounts[g] !== undefined) goalCounts[g]++;
-                        });
-                    } else {
-                        goalCounts["ยังไม่ตั้งเป้าหมาย"]++;
-                    }
-                } else {
-                    goalCounts["ยังไม่ตั้งเป้าหมาย"]++;
-                }
+                        goalsArr.forEach(g => { if(goalCounts[g] !== undefined) goalCounts[g]++; });
+                    } else goalCounts["ยังไม่ตั้งเป้าหมาย"]++;
+                } else goalCounts["ยังไม่ตั้งเป้าหมาย"]++;
 
                 if (s.scores && s.scores.length > 0) {
                     const sum = s.scores.reduce((a, b) => a + b.score, 0);
@@ -1373,20 +1457,16 @@
                     if (avg >= 4.0) scoreRanges["ดีเยี่ยม (4-5)"]++;
                     else if (avg >= 3.0) scoreRanges["ปานกลาง (3-3.9)"]++;
                     else scoreRanges["ปรับปรุง (0-2.9)"]++;
-                } else {
-                    scoreRanges["ยังไม่มีคะแนน"]++;
-                }
+                } else scoreRanges["ยังไม่มีคะแนน"]++;
 
                 if (s.readHistory && s.readHistory.length > 0) {
                     const catsReadByStudent = new Set();
                     s.readHistory.forEach(storyId => {
                         const story = STORIES.find(st => st.id === storyId);
                         if (story) catsReadByStudent.add(story.categoryId);
-                        
                         const sStat = storyStats.find(st => st.id === storyId);
                         if (sStat) sStat.count++;
                     });
-
                     catsReadByStudent.forEach(catId => {
                         const cStat = catStats.find(c => c.id === catId);
                         if (cStat) cStat.count++;
@@ -1397,6 +1477,7 @@
             document.getElementById('total-students-count').innerText = students.length;
             document.getElementById('dash-reads-count').innerText = totalReads;
             document.getElementById('dash-ai-count').innerText = aiUsageMock;
+            document.getElementById('dash-warning-count').innerText = totalWarnings;
 
             if (chartGoalInstance) chartGoalInstance.destroy();
             const ctxGoal = document.getElementById('goalChart').getContext('2d');
@@ -1404,27 +1485,11 @@
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(goalCounts),
-                    datasets: [{
-                        data: Object.values(goalCounts),
-                        backgroundColor: ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#cbd5e1'],
-                        borderWidth: 2,
-                        hoverOffset: 4
-                    }]
+                    datasets: [{ data: Object.values(goalCounts), backgroundColor: ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#cbd5e1'], borderWidth: 2, hoverOffset: 4 }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: { 
-                            callbacks: { 
-                                label: (context) => {
-                                    let count = goalCounts[context.label];
-                                    let percent = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
-                                    return ` ${context.label}: ${count} คน (สัดส่วน ${percent}% ของนักเรียน)`; 
-                                }
-                            } 
-                        },
-                        legend: { position: 'bottom', labels: { font: { family: 'Prompt' }, boxWidth: 12 } }
-                    }
+                    plugins: { tooltip: { callbacks: { label: (c) => ` ${c.label}: ${goalCounts[c.label]} คน (${totalStudents > 0 ? ((goalCounts[c.label] / totalStudents) * 100).toFixed(1) : 0}%)` } }, legend: { position: 'bottom', labels: { font: { family: 'Prompt' }, boxWidth: 12 } } }
                 }
             });
 
@@ -1433,31 +1498,12 @@
             const ctxScore = document.getElementById('scoreChart').getContext('2d');
             chartScoreInstance = new Chart(ctxScore, {
                 type: 'bar',
-                data: {
-                    labels: Object.keys(scoreRanges),
-                    datasets: [{
-                        label: 'ร้อยละของนักเรียน (%)',
-                        data: scorePercentages,
-                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#cbd5e1'],
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'เปอร์เซ็นต์ (%)', font: { family: 'Prompt' } } },
-                        x: { ticks: { font: { family: 'Prompt', size: 11 } } }
-                    },
-                    plugins: {
-                        tooltip: { callbacks: { label: (context) => ` ${context.raw}% (${scoreRanges[context.label]} คน)` } },
-                        legend: { display: false }
-                    }
-                }
+                data: { labels: Object.keys(scoreRanges), datasets: [{ label: 'ร้อยละของนักเรียน (%)', data: scorePercentages, backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#cbd5e1'], borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'เปอร์เซ็นต์ (%)', font: { family: 'Prompt' } } }, x: { ticks: { font: { family: 'Prompt', size: 11 } } } }, plugins: { tooltip: { callbacks: { label: (c) => ` ${c.raw}% (${scoreRanges[c.label]} คน)` } }, legend: { display: false } } }
             });
 
             catStats.forEach(c => { c.percent = totalStudents > 0 ? ((c.count / totalStudents) * 100).toFixed(1) : 0; });
             catStats.sort((a, b) => b.count - a.count);
-
             storyStats.forEach(s => { s.percent = totalStudents > 0 ? ((s.count / totalStudents) * 100).toFixed(1) : 0; });
             storyStats.sort((a, b) => b.count - a.count);
 
@@ -1466,116 +1512,66 @@
             catStats.forEach(c => {
                 catTbody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3 border-b border-slate-100">
-                            <div class="font-medium text-slate-800">${c.name}</div>
-                            <div class="w-full bg-slate-200 rounded-full h-1.5 mt-1.5">
-                                <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${c.percent}%"></div>
-                            </div>
-                        </td>
-                        <td class="p-3 text-right w-24 border-b border-slate-100">
-                            <div class="font-bold text-indigo-600">${c.percent}%</div>
-                            <div class="text-xs text-slate-500">${c.count} คน</div>
-                        </td>
-                        <td class="p-3 w-16 text-center border-b border-slate-100">
-                            <button onclick="openReadersModal('${c.id}', 'category')" class="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm" title="ดูรายชื่อผู้อ่าน"><i data-lucide="users" class="w-4 h-4"></i></button>
-                        </td>
-                    </tr>
-                `;
+                        <td class="p-3 border-b border-slate-100"><div class="font-medium text-slate-800">${c.name}</div><div class="w-full bg-slate-200 rounded-full h-1.5 mt-1.5"><div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${c.percent}%"></div></div></td>
+                        <td class="p-3 text-right w-24 border-b border-slate-100"><div class="font-bold text-indigo-600">${c.percent}%</div><div class="text-xs text-slate-500">${c.count} คน</div></td>
+                        <td class="p-3 w-16 text-center border-b border-slate-100"><button onclick="openReadersModal('${c.id}', 'category')" class="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm"><i data-lucide="users" class="w-4 h-4"></i></button></td>
+                    </tr>`;
             });
 
             const storyTbody = document.getElementById('dash-story-popularity');
             storyTbody.innerHTML = '';
-            const topStories = storyStats.slice(0, 10);
-            topStories.forEach(s => {
+            storyStats.slice(0, 10).forEach(s => {
                 const tagStyle = s.level === 'B1-B2' ? 'text-indigo-700 bg-indigo-100' : 'text-slate-600 bg-slate-100';
                 storyTbody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3 border-b border-slate-100">
-                            <div class="text-xs text-slate-500 truncate w-48" title="${s.categoryName}">${s.categoryName} <span class="ml-1 px-1 rounded ${tagStyle}">${s.level}</span></div>
-                            <div class="font-medium text-slate-800 truncate w-48" title="${s.title}">${s.title}</div>
-                            <div class="w-full bg-slate-200 rounded-full h-1.5 mt-1.5">
-                                <div class="bg-sky-500 h-1.5 rounded-full" style="width: ${s.percent}%"></div>
-                            </div>
-                        </td>
-                        <td class="p-3 text-right w-24 border-b border-slate-100">
-                            <div class="font-bold text-sky-600">${s.percent}%</div>
-                            <div class="text-xs text-slate-500">${s.count} คน</div>
-                        </td>
-                        <td class="p-3 w-16 text-center border-b border-slate-100">
-                            <button onclick="openReadersModal('${s.id}', 'story')" class="p-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition shadow-sm" title="ดูรายชื่อผู้อ่าน"><i data-lucide="users" class="w-4 h-4"></i></button>
-                        </td>
-                    </tr>
-                `;
+                        <td class="p-3 border-b border-slate-100"><div class="text-xs text-slate-500 truncate w-48">${s.categoryName} <span class="ml-1 px-1 rounded ${tagStyle}">${s.level}</span></div><div class="font-medium text-slate-800 truncate w-48">${s.title}</div><div class="w-full bg-slate-200 rounded-full h-1.5 mt-1.5"><div class="bg-sky-500 h-1.5 rounded-full" style="width: ${s.percent}%"></div></div></td>
+                        <td class="p-3 text-right w-24 border-b border-slate-100"><div class="font-bold text-sky-600">${s.percent}%</div><div class="text-xs text-slate-500">${s.count} คน</div></td>
+                        <td class="p-3 w-16 text-center border-b border-slate-100"><button onclick="openReadersModal('${s.id}', 'story')" class="p-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition shadow-sm"><i data-lucide="users" class="w-4 h-4"></i></button></td>
+                    </tr>`;
             });
             lucide.createIcons();
         }
 
         function openReadersModal(id, type) {
             const roomFilter = document.getElementById('dash-room-filter').value;
-            let studentsToSearch = Object.values(MOCK_USERS).filter(u => u.role === 'student' && (roomFilter === 'all' || u.room === roomFilter));
-            
+            let studentsToSearch = allStudentsCache.filter(u => (roomFilter === 'all' || u.room === roomFilter));
             let readers = [];
             let titleName = '';
 
             if (type === 'category') {
                 const cat = CATEGORIES.find(c => c.id === id);
                 titleName = `หมวดหมู่: ${cat.name}`;
-                
-                readers = studentsToSearch.filter(s => {
-                    if (!s.readHistory) return false;
-                    return s.readHistory.some(storyId => {
-                        const story = STORIES.find(st => st.id === storyId);
-                        return story && story.categoryId === id;
-                    });
-                });
+                readers = studentsToSearch.filter(s => s.readHistory && s.readHistory.some(storyId => {
+                    const story = STORIES.find(st => st.id === storyId); return story && story.categoryId === id;
+                }));
             } else if (type === 'story') {
                 const story = STORIES.find(s => s.id === id);
                 titleName = `เรื่อง: ${story.title} [${story.level}]`;
-                
-                readers = studentsToSearch.filter(s => {
-                    if (!s.readHistory) return false;
-                    return s.readHistory.includes(id);
-                });
+                readers = studentsToSearch.filter(s => s.readHistory && s.readHistory.includes(id));
             }
 
-            readers.sort((a, b) => {
-                if (a.room !== b.room) return (a.room || '').localeCompare(b.room || '');
-                return parseInt(a.number || 0) - parseInt(b.number || 0);
-            });
-
+            readers.sort((a, b) => { if (a.room !== b.room) return (a.room || '').localeCompare(b.room || ''); return parseInt(a.number || 0) - parseInt(b.number || 0); });
             document.getElementById('readers-modal-title').innerText = titleName;
             document.getElementById('readers-modal-count').innerText = readers.length;
 
             const tbody = document.getElementById('readers-modal-list');
             tbody.innerHTML = '';
-            
             if (readers.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 bg-slate-50">ยังไม่มีข้อมูลผู้อ่านในขณะนี้</td></tr>';
             } else {
                 readers.forEach(u => {
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-3 border-b border-slate-100 text-slate-600">${u.room || '-'}</td>
-                            <td class="p-3 border-b border-slate-100 text-slate-600 text-center">${u.number || '-'}</td>
-                            <td class="p-3 border-b border-slate-100 font-medium text-slate-600">${u.id}</td>
-                            <td class="p-3 border-b border-slate-100 font-medium text-slate-800">${u.name}</td>
-                        </tr>
-                    `;
+                    tbody.innerHTML += `<tr class="hover:bg-slate-50 transition"><td class="p-3 border-b border-slate-100 text-slate-600">${u.room || '-'}</td><td class="p-3 border-b border-slate-100 text-slate-600 text-center">${u.number || '-'}</td><td class="p-3 border-b border-slate-100 font-medium text-slate-600">${u.id}</td><td class="p-3 border-b border-slate-100 font-medium text-slate-800">${u.name}</td></tr>`;
                 });
             }
-
             document.getElementById('view-readers-modal').classList.remove('hidden');
         }
 
-        function closeReadersModal() {
-            document.getElementById('view-readers-modal').classList.add('hidden');
-        }
+        function closeReadersModal() { document.getElementById('view-readers-modal').classList.add('hidden'); }
 
-        function switchTeacherTab(tabId) {
+        async function switchTeacherTab(tabId) {
             ['dash', 'students', 'content'].forEach(id => {
                 const btn = document.getElementById(`tab-btn-${id}`);
                 const content = document.getElementById(`t-tab-${id}`);
-                
                 btn.className = "px-6 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent hover:border-indigo-300 transition whitespace-nowrap";
                 content.classList.add('hidden');
                 content.classList.remove('block');
@@ -1584,11 +1580,15 @@
                     btn.className = "px-6 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 transition whitespace-nowrap";
                     content.classList.remove('hidden');
                     content.classList.add('block');
-                    
-                    if(tabId === 'content') renderTeacherStories();
-                    if(tabId === 'dash') updateDashboardStats(); 
                 }
             });
+
+            if(tabId === 'content') renderTeacherStories();
+            if(tabId === 'dash' || tabId === 'students') {
+                await fetchStudents();
+                if(tabId === 'dash') updateDashboardStats();
+                if(tabId === 'students') renderTeacherStudents();
+            }
         }
 
         function renderTeacherStudents() {
@@ -1597,22 +1597,12 @@
             const roomActions = document.getElementById('room-actions-group');
             tbody.innerHTML = '';
 
-            if (roomFilter !== 'all') {
-                roomActions.classList.remove('hidden');
-            } else {
-                roomActions.classList.add('hidden');
-            }
+            roomActions.classList.toggle('hidden', roomFilter === 'all');
 
-            let students = Object.values(MOCK_USERS).filter(u => u.role === 'student');
-            
-            students.sort((a, b) => {
-                if (a.room !== b.room) return (a.room || '').localeCompare(b.room || '');
-                return parseInt(a.number || 0) - parseInt(b.number || 0);
-            });
+            let students = allStudentsCache.filter(u => roomFilter === 'all' || u.room === roomFilter);
+            students.sort((a, b) => { if (a.room !== b.room) return (a.room || '').localeCompare(b.room || ''); return parseInt(a.number || 0) - parseInt(b.number || 0); });
             
             students.forEach(u => {
-                if(roomFilter !== 'all' && u.room !== roomFilter) return;
-
                 let avg = "0.0";
                 if(u.scores && u.scores.length > 0) {
                    const sum = u.scores.reduce((a,b)=>a+b.score, 0);
@@ -1625,25 +1615,23 @@
                 } else if (u.goals && u.goals.main) {
                     goalHtml = `<span class="bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded text-[10px] m-0.5 inline-block shadow-sm">${u.goals.main}</span>`; 
                 }
-
                 const reads = u.readHistory ? u.readHistory.length : 0;
+                const warnings = u.warnings || 0;
+                const warningStyle = warnings > 0 ? "text-rose-600 font-bold" : "text-slate-400";
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition group">
                         <td class="p-3 border-b text-slate-600">${u.room || '-'}</td>
                         <td class="p-3 border-b text-slate-600 text-center">${u.number || '-'}</td>
-                        <td class="p-3 border-b">
-                            <div class="text-slate-500 text-xs">${u.id}</div>
-                            <div class="font-medium text-slate-800">${u.name}</div>
-                        </td>
-                        <td class="p-3 border-b max-w-[200px] leading-tight">${goalHtml}</td>
+                        <td class="p-3 border-b"><div class="text-slate-500 text-xs">${u.id}</div><div class="font-medium text-slate-800">${u.name}</div></td>
+                        <td class="p-3 border-b text-center ${warningStyle}">${warnings}</td>
                         <td class="p-3 border-b font-bold text-slate-700 text-center">${reads}</td>
                         <td class="p-3 border-b font-bold text-indigo-600 text-center">${avg}</td>
                         <td class="p-3 border-b text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button type="button" data-id="${u.id}" onclick="openEditStudentModal(this.dataset.id)" class="text-amber-500 hover:bg-amber-100 p-1.5 rounded-lg transition" title="แก้ไขข้อมูล"><i data-lucide="edit" class="w-4 h-4"></i></button>
-                                <button type="button" data-id="${u.id}" onclick="resetStudentGoal(this.dataset.id)" class="text-sky-500 hover:bg-sky-100 p-1.5 rounded-lg transition" title="รีเซตเป้าหมาย"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
-                                <button type="button" data-id="${u.id}" onclick="deleteStudent(this.dataset.id)" class="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition" title="ลบนักเรียน"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <button type="button" data-id="${u.id}" onclick="openEditStudentModal('${u.id}')" class="text-amber-500 hover:bg-amber-100 p-1.5 rounded-lg transition" title="แก้ไขข้อมูล"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                <button type="button" data-id="${u.id}" onclick="resetStudentGoal('${u.id}', '${u.name}')" class="text-sky-500 hover:bg-sky-100 p-1.5 rounded-lg transition" title="รีเซตเป้าหมาย"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+                                <button type="button" data-id="${u.id}" onclick="deleteStudent('${u.id}', '${u.name}')" class="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition" title="ลบนักเรียน"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -1652,24 +1640,18 @@
             lucide.createIcons();
         }
 
-        function deleteStudent(id) {
-            const user = MOCK_USERS[id];
-            if (!user) {
-                showModal({ title: 'เกิดข้อผิดพลาด', message: 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ', type: 'error' });
-                return;
-            }
+        function deleteStudent(id, name) {
             showModal({
                 title: 'ยืนยันการลบนักเรียน',
-                message: `คุณต้องการลบข้อมูลของ "${user.name}" ออกจากระบบใช่หรือไม่?\nประวัติการอ่านทั้งหมดของนักเรียนจะหายไป`,
-                type: 'warning',
-                showCancel: true,
-                onConfirm: () => {
-                    const studentName = user.name;
-                    delete MOCK_USERS[id];
-                    updateRoomFilterOptions();
-                    renderTeacherStudents();
-                    document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
-                    showModal({ title: 'ลบสำเร็จ', message: `ลบข้อมูลนักเรียน "${studentName}" สำเร็จ!`, type: 'success' });
+                message: `คุณต้องการลบข้อมูลของ "${name}" (รหัส: ${id}) ใช่หรือไม่?\nประวัติการอ่านทั้งหมดของนักเรียนจะหายไปถาวร!`,
+                type: 'warning', showCancel: true,
+                onConfirm: async () => {
+                    try {
+                        await db.collection("users").doc(id).delete();
+                        await fetchStudents();
+                        renderTeacherStudents();
+                        showModal({ title: 'ลบสำเร็จ', message: `ลบข้อมูลนักเรียน "${name}" สำเร็จ!`, type: 'success' });
+                    } catch(e) { showModal({ title: 'ลบไม่สำเร็จ', message: 'พบปัญหาขัดข้อง', type: 'error' }); }
                 }
             });
         }
@@ -1678,40 +1660,33 @@
             const room = document.getElementById('teacher-room-filter').value;
             if (room === 'all') return;
             showModal({
-                title: '🚨 คำเตือนขั้นสุด!',
-                message: `คุณต้องการลบข้อมูลนักเรียน "ทุกคน" ในห้อง ${room} ใช่หรือไม่?\nการกระทำนี้ไม่สามารถย้อนกลับได้!`,
-                type: 'error',
-                showCancel: true,
-                onConfirm: () => {
-                    for(let key in MOCK_USERS) {
-                        if(MOCK_USERS[key].role === 'student' && MOCK_USERS[key].room === room) {
-                            delete MOCK_USERS[key];
-                        }
-                    }
-                    updateRoomFilterOptions();
-                    document.getElementById('teacher-room-filter').value = 'all'; 
-                    renderTeacherStudents();
-                    document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
-                    showModal({ title: 'ลบสำเร็จ', message: `ลบข้อมูลนักเรียนห้อง ${room} เรียบร้อยแล้ว`, type: 'success' });
+                title: '🚨 คำเตือนขั้นสุด!', message: `คุณต้องการลบข้อมูลนักเรียน "ทุกคน" ในห้อง ${room} ใช่หรือไม่?\nการกระทำนี้ไม่สามารถย้อนกลับได้!`,
+                type: 'error', showCancel: true,
+                onConfirm: async () => {
+                    try {
+                        const batch = db.batch();
+                        allStudentsCache.forEach(u => { if(u.room === room) batch.delete(db.collection("users").doc(u.id)); });
+                        await batch.commit();
+                        await fetchStudents();
+                        document.getElementById('teacher-room-filter').value = 'all'; 
+                        renderTeacherStudents();
+                        showModal({ title: 'ลบสำเร็จ', message: `ลบข้อมูลนักเรียนห้อง ${room} เรียบร้อยแล้ว`, type: 'success' });
+                    } catch(e) { showModal({ title: 'ข้อผิดพลาด', message: 'ทำรายการไม่สำเร็จ', type: 'error' }); }
                 }
             });
         }
 
-        function resetStudentGoal(id) {
-            const user = MOCK_USERS[id];
-            if (!user) {
-                showModal({ title: 'เกิดข้อผิดพลาด', message: 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ', type: 'error' });
-                return;
-            }
+        function resetStudentGoal(id, name) {
             showModal({
-                title: 'ยืนยันการรีเซตเป้าหมาย',
-                message: `ยืนยันการรีเซตการตั้งเป้าหมายของ "${user.name}" ใช่หรือไม่?\n(นักเรียนจะต้องตั้งเป้าหมายใหม่เมื่อเข้าสู่ระบบครั้งถัดไป)`,
-                type: 'warning',
-                showCancel: true,
-                onConfirm: () => {
-                    MOCK_USERS[id].goals = null;
-                    renderTeacherStudents();
-                    showModal({ title: 'สำเร็จ', message: `รีเซตเป้าหมายของ "${user.name}" เรียบร้อยแล้ว!`, type: 'success' });
+                title: 'ยืนยันการรีเซตเป้าหมาย', message: `ยืนยันการรีเซตการตั้งเป้าหมายของ "${name}" ใช่หรือไม่?\n(นักเรียนจะต้องตั้งเป้าหมายใหม่เมื่อเข้าสู่ระบบครั้งถัดไป)`,
+                type: 'warning', showCancel: true,
+                onConfirm: async () => {
+                    try {
+                        await db.collection("users").doc(id).update({ goals: null });
+                        await fetchStudents();
+                        renderTeacherStudents();
+                        showModal({ title: 'สำเร็จ', message: `รีเซตเป้าหมายของ "${name}" เรียบร้อยแล้ว!`, type: 'success' });
+                    } catch(e) { showModal({ title: 'ข้อผิดพลาด', message: 'ทำรายการไม่สำเร็จ', type: 'error' }); }
                 }
             });
         }
@@ -1720,26 +1695,56 @@
             const room = document.getElementById('teacher-room-filter').value;
             if (room === 'all') return;
             showModal({
-                title: 'ยืนยันการรีเซตทั้งห้อง',
-                message: `ยืนยันการรีเซตเป้าหมายของนักเรียน "ทุกคน" ในห้อง ${room} ใช่หรือไม่?`,
-                type: 'warning',
-                showCancel: true,
-                onConfirm: () => {
-                    let count = 0;
-                    for(let key in MOCK_USERS) {
-                        if(MOCK_USERS[key].role === 'student' && MOCK_USERS[key].room === room) {
-                            MOCK_USERS[key].goals = null;
-                            count++;
-                        }
-                    }
-                    renderTeacherStudents();
-                    showModal({ title: 'สำเร็จ', message: `รีเซตเป้าหมายให้นักเรียนจำนวน ${count} คน เรียบร้อยแล้ว!`, type: 'success' });
+                title: 'ยืนยันการรีเซตทั้งห้อง', message: `ยืนยันการรีเซตเป้าหมายของนักเรียน "ทุกคน" ในห้อง ${room} ใช่หรือไม่?`,
+                type: 'warning', showCancel: true,
+                onConfirm: async () => {
+                    try {
+                        const batch = db.batch();
+                        let count = 0;
+                        allStudentsCache.forEach(u => { if(u.room === room) { batch.update(db.collection("users").doc(u.id), { goals: null }); count++; } });
+                        await batch.commit();
+                        await fetchStudents();
+                        renderTeacherStudents();
+                        showModal({ title: 'สำเร็จ', message: `รีเซตเป้าหมายให้นักเรียนจำนวน ${count} คน เรียบร้อยแล้ว!`, type: 'success' });
+                    } catch(e) { showModal({ title: 'ข้อผิดพลาด', message: 'ทำรายการไม่สำเร็จ', type: 'error' }); }
                 }
             });
         }
 
+        function openAddStudentModal() { document.getElementById('add-student-modal').classList.remove('hidden'); }
+        function closeAddStudentModal() { document.getElementById('add-student-modal').classList.add('hidden'); document.getElementById('add-student-form').reset(); }
+
+        async function submitNewStudent(e) {
+            e.preventDefault();
+            const id = document.getElementById('add-id').value.trim();
+            const num = document.getElementById('add-num').value.trim();
+            const name = document.getElementById('add-name').value.trim();
+            const room = document.getElementById('add-room').value.trim();
+            const pass = document.getElementById('add-pass').value.trim();
+
+            const btn = document.getElementById('btn-submit-add');
+            btn.innerHTML = "กำลังบันทึก..."; btn.disabled = true;
+
+            try {
+                const doc = await db.collection("users").doc(id).get();
+                if(doc.exists) {
+                    showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีในระบบอยู่แล้วครับ!', type: 'error' });
+                } else {
+                    const newUser = { id, number: num, name, room, pass, role: "student", goals: null, readHistory: [], scores: [], warnings: 0 };
+                    await db.collection("users").doc(id).set(newUser);
+                    await fetchStudents();
+                    closeAddStudentModal();
+                    updateRoomFilterOptions();
+                    document.getElementById('teacher-room-filter').value = 'all';
+                    renderTeacherStudents();
+                    showModal({ title: 'เพิ่มสำเร็จ', message: `เพิ่มข้อมูลนักเรียน: ${name} สำเร็จ!`, type: 'success' });
+                }
+            } catch(e) { showModal({ title: 'ข้อผิดพลาด', message: 'ไม่สามารถบันทึกข้อมูลได้', type: 'error' }); }
+            btn.innerHTML = "บันทึกข้อมูล"; btn.disabled = false;
+        }
+
         function openEditStudentModal(id) {
-            const user = MOCK_USERS[id];
+            const user = allStudentsCache.find(u => u.id === id);
             if (!user) return;
             document.getElementById('edit-old-id').value = user.id;
             document.getElementById('edit-id').value = user.id;
@@ -1750,34 +1755,40 @@
             document.getElementById('edit-student-modal').classList.remove('hidden');
         }
 
-        function closeEditStudentModal() {
-            document.getElementById('edit-student-modal').classList.add('hidden');
-            document.getElementById('edit-student-form').reset();
-        }
+        function closeEditStudentModal() { document.getElementById('edit-student-modal').classList.add('hidden'); document.getElementById('edit-student-form').reset(); }
 
-        function submitEditStudent(e) {
+        async function submitEditStudent(e) {
             e.preventDefault();
             const oldId = document.getElementById('edit-old-id').value;
             const newId = document.getElementById('edit-id').value.trim();
-            
-            if (oldId !== newId) {
-                if (MOCK_USERS[newId]) {
-                    showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีนักเรียนคนอื่นใช้ในระบบอยู่แล้วครับ!', type: 'error' });
-                    return;
-                }
-                MOCK_USERS[newId] = { ...MOCK_USERS[oldId], id: newId };
-                delete MOCK_USERS[oldId];
-            }
-            
-            MOCK_USERS[newId].number = document.getElementById('edit-num').value.trim();
-            MOCK_USERS[newId].name = document.getElementById('edit-name').value.trim();
-            MOCK_USERS[newId].room = document.getElementById('edit-room').value.trim();
-            MOCK_USERS[newId].pass = document.getElementById('edit-pass').value.trim();
+            const num = document.getElementById('edit-num').value.trim();
+            const name = document.getElementById('edit-name').value.trim();
+            const room = document.getElementById('edit-room').value.trim();
+            const pass = document.getElementById('edit-pass').value.trim();
 
-            closeEditStudentModal();
-            updateRoomFilterOptions();
-            renderTeacherStudents();
-            showModal({ title: 'บันทึกสำเร็จ', message: `บันทึกการแก้ไขข้อมูล: ${MOCK_USERS[newId].name} สำเร็จ!`, type: 'success' });
+            const btn = document.getElementById('btn-submit-edit');
+            btn.innerHTML = "กำลังบันทึก..."; btn.disabled = true;
+
+            try {
+                if (oldId !== newId) {
+                    const newDoc = await db.collection("users").doc(newId).get();
+                    if (newDoc.exists) { showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีคนอื่นใช้อยู่แล้ว!', type: 'error' }); btn.innerHTML = "บันทึกการแก้ไข"; btn.disabled = false; return; }
+                    
+                    const oldDoc = await db.collection("users").doc(oldId).get();
+                    const data = oldDoc.data();
+                    data.id = newId; data.number = num; data.name = name; data.room = room; data.pass = pass;
+                    await db.collection("users").doc(newId).set(data);
+                    await db.collection("users").doc(oldId).delete();
+                } else {
+                    await db.collection("users").doc(newId).update({ number: num, name, room, pass });
+                }
+                await fetchStudents();
+                closeEditStudentModal();
+                updateRoomFilterOptions();
+                renderTeacherStudents();
+                showModal({ title: 'บันทึกสำเร็จ', message: `บันทึกการแก้ไขข้อมูลของ ${name} สำเร็จ!`, type: 'success' });
+            } catch(e) { showModal({ title: 'ข้อผิดพลาด', message: 'ไม่สามารถอัปเดตข้อมูลได้', type: 'error' }); }
+            btn.innerHTML = "บันทึกการแก้ไข"; btn.disabled = false;
         }
 
         function openStudentProfileModal() {
@@ -1790,47 +1801,49 @@
             document.getElementById('profile-pass').value = currentUser.pass || '';
             document.getElementById('student-profile-modal').classList.remove('hidden');
         }
+        function closeStudentProfileModal() { document.getElementById('student-profile-modal').classList.add('hidden'); }
 
-        function closeStudentProfileModal() {
-            document.getElementById('student-profile-modal').classList.add('hidden');
-        }
-
-        function submitStudentProfile(e) {
+        async function submitStudentProfile(e) {
             e.preventDefault();
             const oldId = document.getElementById('profile-old-id').value;
             const newId = document.getElementById('profile-id').value.trim();
-            
-            if (oldId !== newId) {
-                if (MOCK_USERS[newId]) {
-                    showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้ครับ', type: 'error' });
-                    return;
+            const num = document.getElementById('profile-num').value.trim();
+            const name = document.getElementById('profile-name').value.trim();
+            const room = document.getElementById('profile-room').value.trim();
+            const pass = document.getElementById('profile-pass').value.trim();
+
+            const btn = document.getElementById('btn-submit-profile');
+            btn.innerHTML = "กำลังบันทึก..."; btn.disabled = true;
+
+            try {
+                if (oldId !== newId) {
+                    const newDoc = await db.collection("users").doc(newId).get();
+                    if (newDoc.exists) { showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีคนอื่นใช้อยู่แล้ว!', type: 'error' }); btn.innerHTML = "บันทึกข้อมูล"; btn.disabled = false; return; }
+                    
+                    const data = currentUser;
+                    data.id = newId; data.number = num; data.name = name; data.room = room; data.pass = pass;
+                    await db.collection("users").doc(newId).set(data);
+                    await db.collection("users").doc(oldId).delete();
+                    currentUser = data;
+                } else {
+                    await db.collection("users").doc(newId).update({ number: num, name, room, pass });
+                    currentUser.number = num; currentUser.name = name; currentUser.room = room; currentUser.pass = pass;
                 }
-                MOCK_USERS[newId] = { ...MOCK_USERS[oldId], id: newId };
-                delete MOCK_USERS[oldId];
-                currentUser = MOCK_USERS[newId]; 
-            }
-            
-            currentUser.number = document.getElementById('profile-num').value.trim();
-            currentUser.name = document.getElementById('profile-name').value.trim();
-            currentUser.room = document.getElementById('profile-room').value.trim();
-            currentUser.pass = document.getElementById('profile-pass').value.trim();
-
-            document.getElementById('nav-student-name').innerText = currentUser.name;
-            document.getElementById('nav-student-id').innerText = `ID: ${currentUser.id}`;
-
-            closeStudentProfileModal();
-            showModal({ title: 'บันทึกสำเร็จ', message: 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว!', type: 'success' });
+                
+                document.getElementById('nav-student-name').innerText = currentUser.name;
+                document.getElementById('nav-student-id').innerText = `ID: ${currentUser.id}`;
+                closeStudentProfileModal();
+                showModal({ title: 'บันทึกสำเร็จ', message: 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว!', type: 'success' });
+            } catch(e) { showModal({ title: 'ข้อผิดพลาด', message: 'ไม่สามารถอัปเดตข้อมูลได้', type: 'error' }); }
+            btn.innerHTML = "บันทึกข้อมูล"; btn.disabled = false;
         }
 
         function exportToExcel() {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            csvContent += "ห้อง,เลขที่,เลขประจำตัว,ชื่อ-สกุล,เป้าหมายหลัก,อ่านแล้ว(เรื่อง),คะแนนเฉลี่ย\n";
+            csvContent += "ห้อง,เลขที่,เลขประจำตัว,ชื่อ-สกุล,เป้าหมายหลัก,อ่านแล้ว(เรื่อง),คะแนนเฉลี่ย,สลับหน้าจอสอบ(ครั้ง)\n";
             
-            let students = Object.values(MOCK_USERS).filter(u => u.role === 'student');
-            students.sort((a, b) => {
-                if (a.room !== b.room) return (a.room || '').localeCompare(b.room || '');
-                return parseInt(a.number || 0) - parseInt(b.number || 0);
-            });
+            let students = allStudentsCache.slice();
+            students.sort((a, b) => { if (a.room !== b.room) return (a.room || '').localeCompare(b.room || ''); return parseInt(a.number || 0) - parseInt(b.number || 0); });
 
             students.forEach(u => {
                 let avg = "0.0";
@@ -1840,147 +1853,84 @@
                 }
                 let goal = u.goals && u.goals.main ? (Array.isArray(u.goals.main) ? u.goals.main.join(' + ') : u.goals.main) : "ยังไม่ตั้งเป้าหมาย";
                 let readCount = u.readHistory ? u.readHistory.length : 0;
-                csvContent += `${u.room || '-'},${u.number || '-'},${u.id},${u.name},${goal},${readCount},${avg}\n`;
+                let warnings = u.warnings || 0;
+                csvContent += `${u.room || '-'},${u.number || '-'},${u.id},${u.name},${goal},${readCount},${avg},${warnings}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "student_progress_report.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "student_progress_report.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function downloadTemplate(e) {
             e.preventDefault();
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             csvContent += "เลขประจำตัวนักเรียน,เลขที่,ชื่อ-สกุล,ห้อง,รหัสผ่าน\n";
-            csvContent += "10001,1,เด็กชายสมมติ ทดสอบ,ม.1/1,12345678\n";
-            csvContent += "10002,2,เด็กหญิงเรียนดี ขยันยิ่ง,ม.1/1,12345678\n";
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "template_import_students.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            csvContent += "10001,1,เด็กชายสมมติ ทดสอบ,ม.1/1,12345678\n10002,2,เด็กหญิงเรียนดี ขยันยิ่ง,ม.1/1,12345678\n";
+            const encodedUri = encodeURI(csvContent); const link = document.createElement("a");
+            link.setAttribute("href", encodedUri); link.setAttribute("download", "template_import_students.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
-        function importStudentsMock(input) {
+        async function importStudentsMock(input) {
             if(input.files && input.files[0]) {
                 const file = input.files[0];
                 const reader = new FileReader();
-                
-                reader.onload = function(e) {
+                reader.onload = async function(e) {
                     const text = e.target.result.replace(/^\uFEFF/, ''); 
                     const lines = text.split(/\r?\n/); 
                     let importedCount = 0;
                     
-                    for(let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if(!line) continue;
-                        
-                        const cols = line.split(',');
-                        if(cols.length >= 4) {
-                            const id = cols[0].trim();
-                            const number = cols[1].trim();
-                            const name = cols[2].trim();
-                            const room = cols[3].trim();
-                            const pass = cols[4] ? cols[4].trim() : "12345678"; 
-                            
-                            if(id && id !== "") {
-                                MOCK_USERS[id] = {
-                                    id: id,
-                                    number: number,
-                                    name: name,
-                                    room: room,
-                                    pass: pass,
-                                    role: "student",
-                                    goals: null,
-                                    readHistory: [],
-                                    scores: []
-                                };
-                                importedCount++;
+                    showModal({ title: 'กำลังนำเข้า...', message: 'กรุณารอสักครู่ ระบบกำลังเพิ่มนักเรียนเข้าฐานข้อมูล' });
+                    
+                    try {
+                        const batch = db.batch();
+                        for(let i = 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if(!line) continue;
+                            const cols = line.split(',');
+                            if(cols.length >= 4) {
+                                const id = cols[0].trim(); const number = cols[1].trim(); const name = cols[2].trim(); const room = cols[3].trim();
+                                const pass = cols[4] ? cols[4].trim() : "12345678"; 
+                                if(id && id !== "") {
+                                    const ref = db.collection("users").doc(id);
+                                    batch.set(ref, { id, number, name, room, pass, role: "student", goals: null, readHistory: [], scores: [], warnings: 0 });
+                                    importedCount++;
+                                }
                             }
                         }
+                        await batch.commit();
+                        await fetchStudents();
+                        updateRoomFilterOptions();
+                        document.getElementById('teacher-room-filter').value = 'all';
+                        renderTeacherStudents(); 
+                        input.value = ''; 
+                        showModal({ title: 'นำเข้าสำเร็จ', message: `นำเข้ารายชื่อนักเรียนใหม่จำนวน ${importedCount} คน ลงฐานข้อมูล Firebase เรียบร้อยแล้ว!`, type: 'success' });
+                    } catch(err) {
+                        showModal({ title: 'ข้อผิดพลาด', message: 'การนำเข้าล้มเหลว', type: 'error' });
                     }
-                    
-                    updateRoomFilterOptions();
-                    document.getElementById('teacher-room-filter').value = 'all';
-                    renderTeacherStudents(); 
-                    document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
-                    
-                    input.value = ''; 
-                    showModal({ title: 'นำเข้าสำเร็จ', message: `อัปโหลดและประมวลผลไฟล์สำเร็จ!\nนำเข้ารายชื่อนักเรียนใหม่จำนวน ${importedCount} คน เข้าสู่ระบบเรียบร้อยแล้ว`, type: 'success' });
                 };
-                
                 reader.readAsText(file, "windows-874"); 
             }
         }
 
-        function openAddStudentModal() {
-            document.getElementById('add-student-modal').classList.remove('hidden');
-        }
-
-        function closeAddStudentModal() {
-            document.getElementById('add-student-modal').classList.add('hidden');
-            document.getElementById('add-student-form').reset();
-        }
-
-        function submitNewStudent(e) {
-            e.preventDefault();
-            const id = document.getElementById('add-id').value.trim();
-            const num = document.getElementById('add-num').value.trim();
-            const name = document.getElementById('add-name').value.trim();
-            const room = document.getElementById('add-room').value.trim();
-            const pass = document.getElementById('add-pass').value.trim();
-
-            if(MOCK_USERS[id]) {
-                showModal({ title: 'เกิดข้อผิดพลาด', message: 'รหัสประจำตัวนี้มีในระบบอยู่แล้วครับ!', type: 'error' });
-                return;
-            }
-
-            MOCK_USERS[id] = {
-                id: id,
-                number: num,
-                name: name,
-                room: room,
-                pass: pass,
-                role: "student",
-                goals: null,
-                readHistory: [],
-                scores: []
-            };
-
-            closeAddStudentModal();
-            
-            updateRoomFilterOptions();
-            document.getElementById('teacher-room-filter').value = 'all';
-            renderTeacherStudents();
-            document.getElementById('total-students-count').innerText = Object.values(MOCK_USERS).filter(u => u.role === 'student').length;
-            
-            showModal({ title: 'เพิ่มสำเร็จ', message: `เพิ่มข้อมูลนักเรียน: ${name} สำเร็จ!`, type: 'success' });
-        }
-
-        function extractStoriesMock(e) {
+        // ==========================================
+        // TEACHER STORIES MANAGEMENT LOGIC
+        // ==========================================
+        async function extractStoriesMock(e) {
             e.preventDefault();
             const btn = document.getElementById('extract-btn');
             const num = document.getElementById('extract-num').value;
             const originalContent = btn.innerHTML;
             
-            btn.innerHTML = '<span class="loader w-5 h-5 border-2 border-white border-t-transparent"></span> กำลังประมวลผลด้วย AI...';
+            btn.innerHTML = '<span class="loader w-5 h-5 border-2 border-white border-t-transparent"></span> กำลังประมวลผล...';
             btn.disabled = true;
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 document.getElementById('extract-form').reset();
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
-                
-                renderTeacherStories();
-                
-                showModal({ title: 'สร้างเนื้อหาสำเร็จ!', message: `ดึงข้อมูลด้วย AI สำเร็จ!\nระบบได้ทำการปรับระดับภาษา และเพิ่มบทความจำนวน ${num} เรื่อง เข้าสู่คลังบทอ่านเรียบร้อยแล้ว`, type: 'success' });
+                showModal({ title: 'สร้างเนื้อหาสำเร็จ!', message: `ดึงข้อมูลด้วย AI สำเร็จ!\nเพิ่มบทความจำนวน ${num} เรื่อง (การเพิ่มเรื่องชั่วคราวในเดโม่นี้)`, type: 'success' });
             }, 2500);
         }
 
@@ -1990,31 +1940,18 @@
             document.getElementById('teacher-story-count').innerText = STORIES.length;
 
             STORIES.forEach(story => {
-                const statusHtml = story.isHidden 
-                    ? '<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-xs font-semibold flex items-center justify-center gap-1 w-24 mx-auto"><i data-lucide="eye-off" class="w-3 h-3"></i> ซ่อนอยู่</span>'
-                    : '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-semibold flex items-center justify-center gap-1 w-24 mx-auto"><i data-lucide="eye" class="w-3 h-3"></i> แสดงผล</span>';
-
+                const statusHtml = story.isHidden ? '<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-xs font-semibold flex items-center justify-center gap-1 w-24 mx-auto"><i data-lucide="eye-off" class="w-3 h-3"></i> ซ่อนอยู่</span>' : '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-semibold flex items-center justify-center gap-1 w-24 mx-auto"><i data-lucide="eye" class="w-3 h-3"></i> แสดงผล</span>';
                 const tagStyle = story.level === 'B1-B2' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600';
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition group ${story.isHidden ? 'opacity-60 bg-slate-50' : 'bg-white'}">
                         <td class="p-3 border-b border-slate-100 text-center"><img src="${story.cover}" class="w-10 h-10 object-cover rounded-lg shadow-sm inline-block border border-slate-200"></td>
                         <td class="p-3 border-b border-slate-100 text-slate-500 text-xs font-medium uppercase tracking-wide">${story.categoryName}</td>
-                        <td class="p-3 border-b border-slate-100 font-medium text-slate-800">
-                            <div class="flex items-center gap-2">
-                                ${story.title}
-                                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${tagStyle}">${story.level}</span>
-                            </div>
-                        </td>
+                        <td class="p-3 border-b border-slate-100 font-medium text-slate-800"><div class="flex items-center gap-2">${story.title}<span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${tagStyle}">${story.level}</span></div></td>
                         <td class="p-3 border-b border-slate-100 text-center">${statusHtml}</td>
                         <td class="p-3 border-b border-slate-100 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button type="button" onclick="toggleHideStory('${story.id}')" class="${story.isHidden ? 'text-sky-500 hover:bg-sky-100' : 'text-amber-500 hover:bg-amber-100'} p-2 rounded-lg transition shadow-sm" title="${story.isHidden ? 'เปิดให้เด็กเห็น' : 'ซ่อนไม่ให้เด็กเห็น'}">
-                                    <i data-lucide="${story.isHidden ? 'eye' : 'eye-off'}" class="w-4 h-4"></i>
-                                </button>
-                                <button type="button" onclick="deleteStoryItem('${story.id}')" class="text-red-500 hover:bg-red-100 p-2 rounded-lg transition shadow-sm" title="ลบบทความทิ้งถาวร">
-                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                </button>
+                                <button type="button" onclick="toggleHideStory('${story.id}')" class="${story.isHidden ? 'text-sky-500 hover:bg-sky-100' : 'text-amber-500 hover:bg-amber-100'} p-2 rounded-lg transition shadow-sm" title="${story.isHidden ? 'เปิดให้เด็กเห็น' : 'ซ่อนไม่ให้เด็กเห็น'}"><i data-lucide="${story.isHidden ? 'eye' : 'eye-off'}" class="w-4 h-4"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -2023,28 +1960,16 @@
             lucide.createIcons();
         }
 
-        function toggleHideStory(id) {
+        async function toggleHideStory(id) {
             const story = STORIES.find(s => s.id === id);
             if (story) {
                 story.isHidden = !story.isHidden;
                 renderTeacherStories();
-            }
-        }
-
-        function deleteStoryItem(id) {
-            const storyIndex = STORIES.findIndex(s => s.id === id);
-            if (storyIndex > -1) {
-                showModal({
-                    title: 'ยืนยันการลบบทความ',
-                    message: `คุณต้องการลบ "${STORIES[storyIndex].title}" ออกจากระบบใช่หรือไม่?\nการลบนี้จะไม่สามารถย้อนกลับได้`,
-                    type: 'warning',
-                    showCancel: true,
-                    onConfirm: () => {
-                        STORIES.splice(storyIndex, 1);
-                        renderTeacherStories();
-                        showModal({ title: 'ลบสำเร็จ', message: 'ลบบทความออกจากคลังเรียบร้อยแล้ว', type: 'success' });
-                    }
-                });
+                
+                try {
+                    const hiddenIds = STORIES.filter(s => s.isHidden).map(s => s.id);
+                    await db.collection("system").doc("data").set({ hiddenIds }, { merge: true });
+                } catch(e) { console.error("Save system data error", e); }
             }
         }
     </script>
