@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- ป้องกันการแปลภาษาทั้งหน้าเว็บ -->
 <html lang="th" translate="no" class="notranslate">
 <head>
     <meta charset="UTF-8">
@@ -7,7 +6,6 @@
     <meta name="google" content="notranslate">
     <title>2PSR English Reading Platform</title>
     
-    <!-- Firebase Compat SDKs (ระบบฐานข้อมูล และ Analytics) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics-compat.js"></script>
@@ -15,7 +13,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Chart.js สำหรับแสดงกราฟ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
@@ -35,13 +32,11 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* ป้องกันการลากคลุมดำ (เฉพาะเนื้อหาอ่าน) */
         .no-select { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <!-- Navbar -->
     <nav class="bg-white shadow-sm px-4 md:px-6 py-3 flex justify-between items-center fixed w-full top-0 z-50">
         <div class="flex items-center gap-2 cursor-pointer" onclick="if(currentUser && currentUser.role==='student') navigate('storybook')">
             <div class="bg-sky-600 text-white p-2 rounded-lg">
@@ -50,7 +45,6 @@
             <h1 class="text-xl font-bold text-sky-700">2PSR <span class="text-slate-500 font-medium text-sm hidden sm:inline">AI Learning</span></h1>
         </div>
         
-        <!-- Student Nav Items -->
         <div id="student-nav" class="hidden flex items-center gap-3 md:gap-6">
             <button onclick="navigate('progress')" class="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-sky-600 transition">
                 <i data-lucide="line-chart" class="w-4 h-4"></i> <span class="hidden md:inline">ความก้าวหน้า</span>
@@ -69,7 +63,6 @@
             </div>
         </div>
 
-        <!-- Teacher Nav Items -->
         <div id="teacher-nav" class="hidden flex items-center gap-4">
             <div class="text-right hidden sm:block">
                 <p class="font-semibold text-sm text-indigo-700">ระบบจัดการผู้สอน</p>
@@ -81,9 +74,7 @@
 
     <main class="pt-24 pb-12 px-4 max-w-6xl mx-auto min-h-screen">
 
-        <!-- 1. LOGIN VIEW -->
         <div id="view-login" class="view active max-w-md mx-auto mt-10">
-            <!-- Toggle Login Type -->
             <div class="flex justify-center mb-6 bg-slate-100 p-1 rounded-xl">
                 <button onclick="toggleLoginType('student')" id="btn-login-student" class="flex-1 py-2 text-sm font-bold rounded-lg bg-white shadow text-sky-600 transition">นักเรียน</button>
                 <button onclick="toggleLoginType('teacher')" id="btn-login-teacher" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition">ครูผู้สอน</button>
@@ -114,23 +105,20 @@
             </div>
         </div>
 
-        <!-- 2. TEACHER DASHBOARD VIEW -->
         <div id="view-teacher" class="view">
             <div class="mb-6 flex justify-between items-end">
                 <div>
                     <h2 class="text-3xl font-bold text-slate-800">Teacher Dashboard</h2>
-                    <p class="text-slate-500 mt-1">ระบบจัดการห้องเรียนและติดตามความก้าวหน้า (เชื่อมต่อ Firebase แล้ว 🟢)</p>
+                    <p class="text-slate-500 mt-1">ระบบจัดการห้องเรียนและติดตามความก้าวหน้า</p>
                 </div>
             </div>
 
-            <!-- Teacher Tabs -->
             <div class="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto">
                 <button onclick="switchTeacherTab('dash')" id="tab-btn-dash" class="px-6 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 transition whitespace-nowrap">ภาพรวม (Dashboard)</button>
                 <button onclick="switchTeacherTab('students')" id="tab-btn-students" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent hover:border-indigo-300 transition whitespace-nowrap">ความก้าวหน้านักเรียน</button>
                 <button onclick="switchTeacherTab('content')" id="tab-btn-content" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent hover:border-indigo-300 transition whitespace-nowrap">จัดการคลังบทอ่าน</button>
             </div>
 
-            <!-- Tab 1: Dashboard -->
             <div id="t-tab-dash" class="teacher-tab-content block">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-lg text-slate-800">สถิติภาพรวม (Overview)</h3>
@@ -209,7 +197,6 @@
                 </div>
             </div>
 
-            <!-- Tab 2: Students Progress -->
             <div id="t-tab-students" class="teacher-tab-content hidden">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -254,7 +241,7 @@
                                 <tr class="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
                                     <th class="p-3 font-medium">ห้อง</th>
                                     <th class="p-3 font-medium text-center">เลขที่</th>
-                                    <th class="p-3 font-medium">รหัส/ชื่อ</th>
+                                    <th class="p-3 font-medium">รหัส/ชื่อ (คลิกเพื่อดูประวัติ)</th>
                                     <th class="p-3 font-medium text-center" title="จำนวนครั้งที่สลับแท็บ/หน้าจอระหว่างสอบ">⚠️ สลับจอ</th>
                                     <th class="p-3 font-medium text-center">อ่านแล้ว</th>
                                     <th class="p-3 font-medium text-center">คะแนนเฉลี่ย</th>
@@ -267,7 +254,6 @@
                 </div>
             </div>
 
-            <!-- Tab 3: Content Management -->
             <div id="t-tab-content" class="teacher-tab-content hidden">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
                     <div class="flex items-start gap-4 mb-6">
@@ -331,7 +317,6 @@
             </div>
         </div>
 
-        <!-- 3. STUDENT GOAL SETTING (P - Planning) -->
         <div id="view-goal" class="view max-w-2xl mx-auto mt-6">
             <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 relative overflow-hidden">
                 <div class="absolute top-0 left-0 w-2 h-full bg-sky-500"></div>
@@ -392,7 +377,6 @@
             </div>
         </div>
 
-        <!-- 4. STORYBOOK VIEW -->
         <div id="view-storybook" class="view">
             <div class="flex flex-col md:flex-row justify-between md:items-end mb-8 gap-4">
                 <div>
@@ -407,9 +391,7 @@
             <div id="categories-container" class="space-y-10"></div>
         </div>
 
-        <!-- 5. READING & SCAFFOLDING VIEW (P&S) -->
         <div id="view-reading" class="view">
-            <!-- Navigation Action Bar -->
             <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-xl shadow-sm border border-slate-100">
                 <button onclick="navigate('storybook')" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 flex items-center gap-2 transition font-medium text-sm">
                     <i data-lucide="arrow-left" class="w-4 h-4"></i> ย้อนกลับ (Back)
@@ -421,7 +403,6 @@
             </div>
 
             <div class="flex flex-col lg:flex-row gap-6">
-                <!-- ซ้าย: บทความ -->
                 <div class="lg:w-2/3 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
                     <div class="h-64 w-full bg-slate-200 relative">
                         <img id="read-cover" src="" class="w-full h-full object-cover">
@@ -439,12 +420,10 @@
                             <span>เคล็ดลับ 2PSR: หากไม่รู้ความหมายคำศัพท์ ห้ามเปิดแปลภาษา! ให้ <b>คลิกที่คำศัพท์</b> เพื่อให้ AI ช่วยใบ้คำ (Scaffolding Hint)</span>
                         </div>
                         
-                        <!-- Anti-Copy & Anti-Translate Area -->
                         <div id="read-content" class="text-lg leading-loose text-slate-700 font-medium space-y-4 notranslate no-select" oncopy="return false" oncut="return false" onpaste="return false" oncontextmenu="return false"></div>
                     </div>
                 </div>
 
-                <!-- ขวา: AI Chatbot -->
                 <div class="lg:w-1/3 flex flex-col h-[700px] bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden sticky top-24">
                     <div class="bg-sky-600 text-white p-4 flex items-center gap-3">
                         <div class="bg-white/20 p-2 rounded-lg"><i data-lucide="bot" class="w-6 h-6"></i></div>
@@ -466,7 +445,6 @@
             </div>
         </div>
 
-        <!-- 6. QUIZ & REFLECTION (R) -->
         <div id="view-quiz" class="view max-w-3xl mx-auto">
             <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
                 <h2 class="text-2xl font-bold text-indigo-700 flex items-center gap-2 mb-2">
@@ -475,7 +453,6 @@
                 <p class="text-slate-500 mb-6 pb-6 border-b">เรื่อง: <span id="quiz-title-display" class="font-semibold text-slate-700"></span></p>
 
                 <form id="quiz-form" onsubmit="submitQuiz(event)">
-                    <!-- ป้องกันคลิกขวาก๊อปปี้แบบทดสอบ -->
                     <div id="mcq-container" class="space-y-6 mb-8 notranslate no-select" oncopy="return false" oncut="return false" oncontextmenu="return false"></div>
 
                     <div class="bg-sky-50 p-6 rounded-xl border border-sky-100 mb-6">
@@ -500,7 +477,6 @@
             </div>
         </div>
 
-        <!-- 7. FEEDBACK VIEW -->
         <div id="view-feedback" class="view max-w-2xl mx-auto mt-10">
             <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 text-center">
                 <div class="inline-flex items-center justify-center w-20 h-20 bg-green-100 text-green-600 rounded-full mb-4">
@@ -523,7 +499,6 @@
             </div>
         </div>
 
-        <!-- 8. PROGRESS DASHBOARD -->
         <div id="view-progress" class="view">
             <div class="mb-8">
                 <button onclick="navigate('storybook')" class="text-slate-500 hover:text-sky-600 flex items-center gap-1 transition mb-4"><i data-lucide="arrow-left" class="w-4 h-4"></i> กลับไปชั้นหนังสือ</button>
@@ -562,8 +537,6 @@
 
     </main>
 
-    <!-- Modals สำหรับจัดการนักเรียน -->
-    <!-- Add Student Modal -->
     <div id="add-student-modal" class="fixed inset-0 bg-slate-900/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
             <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="user-plus" class="text-indigo-600"></i> เพิ่มนักเรียนใหม่ (รายบุคคล)</h3>
@@ -600,7 +573,6 @@
         </div>
     </div>
 
-    <!-- Edit Student Modal -->
     <div id="edit-student-modal" class="fixed inset-0 bg-slate-900/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
             <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="edit" class="text-amber-500"></i> แก้ไขข้อมูลนักเรียน</h3>
@@ -638,7 +610,6 @@
         </div>
     </div>
 
-    <!-- Student Profile Modal -->
     <div id="student-profile-modal" class="fixed inset-0 bg-slate-900/60 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
             <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="user-cog" class="text-sky-600"></i> ข้อมูลส่วนตัว</h3>
@@ -676,7 +647,6 @@
         </div>
     </div>
 
-    <!-- Custom Alert/Confirm Modal -->
     <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4 transform transition-all">
             <div class="text-center">
@@ -693,7 +663,6 @@
         </div>
     </div>
 
-    <!-- Modal รายชื่อผู้อ่าน -->
     <div id="view-readers-modal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl mx-4 flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
@@ -720,10 +689,57 @@
         </div>
     </div>
 
+    <!-- Feedback History Modal -->
+    <div id="feedback-history-modal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl mx-4 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="bot" class="text-sky-600"></i> บันทึกฟีดแบค AI</h3>
+                <button onclick="closeFeedbackHistoryModal()" class="text-slate-400 hover:text-red-500 transition p-1 rounded-lg hover:bg-red-50"><i data-lucide="x"></i></button>
+            </div>
+            <div class="mb-4">
+                <p class="text-sm text-slate-500">เรื่อง: <strong id="fh-modal-title" class="text-slate-800"></strong></p>
+                <p class="text-sm text-slate-500">คะแนน: <strong id="fh-modal-score" class="text-green-600"></strong> / 5</p>
+            </div>
+            <div class="overflow-y-auto flex-1 bg-slate-50 p-5 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed whitespace-pre-line" id="fh-modal-content">
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Student Details Modal -->
+    <div id="teacher-student-details-modal" class="fixed inset-0 bg-slate-900/60 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-2xl mx-4 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="user" class="text-indigo-600"></i> ประวัติการเรียนรู้ของนักเรียน</h3>
+                <button onclick="closeTeacherStudentDetailsModal()" class="text-slate-400 hover:text-red-500 transition p-1 rounded-lg hover:bg-red-50"><i data-lucide="x"></i></button>
+            </div>
+            <div class="mb-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
+                <div>
+                    <p class="font-bold text-indigo-800" id="tsd-modal-name"></p>
+                    <p class="text-xs text-indigo-600 mt-1">รหัส: <span id="tsd-modal-id"></span> | ห้อง: <span id="tsd-modal-room"></span> | เลขที่: <span id="tsd-modal-num"></span></p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-indigo-600">คะแนนเฉลี่ย</p>
+                    <p class="font-bold text-2xl text-indigo-800" id="tsd-modal-avg"></p>
+                </div>
+            </div>
+            <div class="overflow-y-auto flex-1 border border-slate-200 rounded-xl relative">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-100 sticky top-0 shadow-sm">
+                        <tr>
+                            <th class="p-3 font-semibold text-slate-700 border-b">เรื่องที่อ่าน</th>
+                            <th class="p-3 font-semibold text-slate-700 border-b text-center">คะแนน</th>
+                            <th class="p-3 font-semibold text-slate-700 border-b text-center">ฟีดแบค AI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tsd-modal-list" class="divide-y divide-slate-100 bg-white">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // ==========================================
-        // CONFIG FIREBASE & AI
-        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyCwhEt8K8zFuvnBWtea3j7VasTNbgfIN_Q",
             authDomain: "psr-learning.firebaseapp.com",
@@ -741,12 +757,9 @@
             analytics = firebase.analytics();
         }
 
-        const GEMINI_API_KEY = "AIzaSyCybyYJNdSxWkWwALMifY6rpcQFrQLWF1I"; 
+        const GEMINI_API_KEY = "AIzaSyCswBBhJ1JQG9y1QPrNj1x0ovXGL2P5I04"; 
 
-        // ==========================================
-        // APP STATE & ICONS
-        // ==========================================
-        let currentView = 'login'; // ตัวแปรเก็บหน้าที่กำลังเปิดอยู่
+        let currentView = 'login'; 
         let currentUser = null;
         let currentStory = null;
         let currentScore = 0;
@@ -755,11 +768,7 @@
 
         lucide.createIcons();
 
-        // ==========================================
-        // ระบบป้องการการโกง (ANTI-CHEAT SYSTEM)
-        // ==========================================
         document.addEventListener("visibilitychange", async () => {
-            // ถ้านักเรียนซ่อนหน้าจอ หรือสลับแท็บ และกำลังอยู่ในหน้า อ่านเนื้อเรื่อง หรือ ทำควิซ
             if (document.hidden && currentUser && currentUser.role === 'student' && (currentView === 'reading' || currentView === 'quiz')) {
                 
                 showModal({
@@ -768,7 +777,6 @@
                     type: 'error'
                 });
                 
-                // บันทึกจำนวนครั้งที่สลับหน้าจอลง Firebase
                 try {
                     currentUser.warnings = (currentUser.warnings || 0) + 1;
                     await db.collection("users").doc(currentUser.id).update({ 
@@ -780,9 +788,6 @@
             }
         });
 
-        // ==========================================
-        // INITIALIZE FIREBASE
-        // ==========================================
         async function initDB() {
             try {
                 const teacherRef = db.collection("users").doc("Kotcha");
@@ -827,9 +832,6 @@
             }
         }
 
-        // ==========================================
-        // CUSTOM MODAL LOGIC
-        // ==========================================
         function showModal(opts) {
             const modal = document.getElementById('custom-modal');
             document.getElementById('custom-modal-title').innerText = opts.title || 'แจ้งเตือน';
@@ -875,9 +877,6 @@
             lucide.createIcons();
         }
 
-        // ==========================================
-        // DATABASE: STORY & CATEGORY (STATIC BASE)
-        // ==========================================
         let loginMode = 'student'; 
         const CATEGORIES = [
             { id: "c1", name: "My Digital Life", icon: "laptop", color: "text-blue-500", bg: "bg-blue-100" },
@@ -967,9 +966,6 @@
             sarahStory.text = "Sarah got a new smartphone for her 13th birthday. At first, she spent six hours a day looking at screens. She played games, watched funny videos, and chatted with her friends constantly. After one week, her eyes felt very dry and she had terrible headaches. Her grades at school also dropped. Sarah realized she needed a change. She created personal rules: no phone during dinner, and no phone one hour before sleeping. Instead of scrolling, she started reading books again. Now, Sarah feels much healthier and her headaches disappeared completely.";
         }
 
-        // ==========================================
-        // UI NAVIGATION & LOGIN LOGIC
-        // ==========================================
         function navigate(viewId) {
             currentView = viewId;
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1064,9 +1060,6 @@
             navigate('login');
         }
 
-        // ==========================================
-        // P - PLANNING
-        // ==========================================
         async function saveGoals(e) {
             e.preventDefault();
             const checkedBoxes = document.querySelectorAll('input[name="mainGoal"]:checked');
@@ -1147,9 +1140,6 @@
             lucide.createIcons();
         }
 
-        // ==========================================
-        // P&S
-        // ==========================================
         function openStory(storyId) {
             currentStory = STORIES.find(s => s.id === storyId);
             document.getElementById('read-category-header').innerText = currentStory.categoryName;
@@ -1220,9 +1210,6 @@
             lucide.createIcons();
         }
 
-        // ==========================================
-        // R - REFLECTION & QUIZ
-        // ==========================================
         function startQuiz() {
             document.getElementById('quiz-title-display').innerText = currentStory.title;
             const container = document.getElementById('mcq-container');
@@ -1290,14 +1277,93 @@
             try {
                 const feedback = await generateGeminiText(prompt);
                 document.getElementById('ai-feedback-content').innerHTML = feedback.replace(/\n/g, '<br>');
+                
+                // บันทึกฟีดแบคลงในฐานข้อมูล
+                let lastRecordIndex = currentUser.scores.length - 1;
+                if(lastRecordIndex >= 0 && currentUser.scores[lastRecordIndex].storyId === currentStory.id) {
+                    currentUser.scores[lastRecordIndex].feedback = feedback;
+                    await db.collection("users").doc(currentUser.id).update({
+                        scores: currentUser.scores
+                    });
+                }
             } catch (error) {
                 document.getElementById('ai-feedback-content').innerHTML = `<div class="text-red-500 text-center py-4">❌ <b>เกิดข้อผิดพลาดในการเชื่อมต่อ AI:</b><br>${error.message}<br><span class="text-xs text-slate-500 mt-2 inline-block">กรุณากดรีเฟรชหน้าเว็บและลองใหม่อีกครั้ง</span></div>`;
             }
         }
 
-        // ==========================================
-        // PROGRESS DASHBOARD
-        // ==========================================
+        // เปิด Modal ดูฟีดแบค
+        function openFeedbackHistoryModal(studentId, scoreIndex) {
+            let student = null;
+            if (currentUser && currentUser.role === 'student' && currentUser.id === studentId) {
+                student = currentUser;
+            } else {
+                student = allStudentsCache.find(u => u.id === studentId);
+            }
+            
+            if (!student || !student.scores || !student.scores[scoreIndex]) return;
+            
+            const record = student.scores[scoreIndex];
+            const story = STORIES.find(s => s.id === record.storyId);
+            
+            document.getElementById('fh-modal-title').innerText = story ? story.title : record.storyId;
+            document.getElementById('fh-modal-score').innerText = record.score;
+            document.getElementById('fh-modal-content').innerHTML = (record.feedback || 'ยังไม่มีฟีดแบคบันทึกไว้').replace(/\n/g, '<br>');
+            
+            document.getElementById('feedback-history-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeFeedbackHistoryModal() {
+            document.getElementById('feedback-history-modal').classList.add('hidden');
+        }
+
+        // เปิด Modal ดูรายละเอียดประวัตินักเรียน (สำหรับครู)
+        function openTeacherStudentDetails(studentId) {
+            const student = allStudentsCache.find(u => u.id === studentId);
+            if(!student) return;
+
+            document.getElementById('tsd-modal-name').innerText = student.name;
+            document.getElementById('tsd-modal-id').innerText = student.id;
+            document.getElementById('tsd-modal-room').innerText = student.room || '-';
+            document.getElementById('tsd-modal-num').innerText = student.number || '-';
+
+            let avg = "0.0";
+            if(student.scores && student.scores.length > 0) {
+               const sum = student.scores.reduce((a,b)=>a+b.score, 0);
+               avg = (sum/student.scores.length).toFixed(1);
+            }
+            document.getElementById('tsd-modal-avg').innerText = avg;
+
+            const tbody = document.getElementById('tsd-modal-list');
+            tbody.innerHTML = '';
+
+            if(!student.scores || student.scores.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-slate-500 bg-slate-50">นักเรียนยังไม่มีประวัติการทำแบบทดสอบ</td></tr>';
+            } else {
+                student.scores.slice().reverse().forEach((record, revIndex) => {
+                    const originalIndex = student.scores.length - 1 - revIndex;
+                    const story = STORIES.find(s => s.id === record.storyId);
+                    const title = story ? story.title : record.storyId;
+                    const feedbackBtn = record.feedback ? `<button onclick="openFeedbackHistoryModal('${student.id}', ${originalIndex})" class="px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition text-xs font-semibold flex items-center gap-1 mx-auto"><i data-lucide="message-square" class="w-3 h-3"></i> เปิดดู</button>` : '<span class="text-xs text-slate-400">-</span>';
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3 border-b border-slate-100 font-medium text-slate-700">${title}</td>
+                            <td class="p-3 border-b border-slate-100 text-center font-bold text-indigo-600">${record.score}/5</td>
+                            <td class="p-3 border-b border-slate-100 text-center">${feedbackBtn}</td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            document.getElementById('teacher-student-details-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeTeacherStudentDetailsModal() {
+            document.getElementById('teacher-student-details-modal').classList.add('hidden');
+        }
+
         function renderProgress() {
             document.getElementById('prog-read-count').innerText = currentUser.readHistory.length;
             
@@ -1331,15 +1397,20 @@
             if(currentUser.readHistory.length === 0) {
                 list.innerHTML = '<p class="text-slate-500 text-sm">ยังไม่มีประวัติการอ่าน เริ่มอ่านเรื่องแรกกันเลย!</p>';
             } else {
-                currentUser.scores.slice().reverse().forEach(record => {
+                currentUser.scores.slice().reverse().forEach((record, revIndex) => {
+                    const originalIndex = currentUser.scores.length - 1 - revIndex;
                     const story = STORIES.find(s => s.id === record.storyId);
+                    
+                    const feedbackBtn = record.feedback ? `<button onclick="openFeedbackHistoryModal('${currentUser.id}', ${originalIndex})" class="text-xs text-sky-600 hover:text-sky-800 hover:underline mt-1 inline-flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ดูฟีดแบค AI</button>` : '';
+
                     list.innerHTML += `
                         <div class="flex justify-between items-center p-3 hover:bg-slate-50 rounded-lg border border-slate-100 transition">
                             <div class="flex items-center gap-3">
                                 <div class="bg-green-100 text-green-600 p-2 rounded-lg"><i data-lucide="check" class="w-4 h-4"></i></div>
                                 <div>
-                                    <p class="font-bold text-sm text-slate-800">${story.title}</p>
-                                    <p class="text-xs text-slate-500">${story.categoryName} <span class="ml-1 bg-slate-200 px-1 rounded">${story.level}</span></p>
+                                    <p class="font-bold text-sm text-slate-800">${story ? story.title : record.storyId}</p>
+                                    <p class="text-xs text-slate-500">${story ? story.categoryName : ''} <span class="ml-1 bg-slate-200 px-1 rounded">${story ? story.level : ''}</span></p>
+                                    ${feedbackBtn}
                                 </div>
                             </div>
                             <div class="text-right">
@@ -1352,9 +1423,8 @@
             lucide.createIcons();
         }
 
-        // ==========================================
-        // GEMINI API UTILS
-        // ==========================================
+        let cachedModel = null; 
+
         async function callGeminiToChat(prompt) {
             isWaitingForAI = true;
             addChatMessage('ai', 'loading');
@@ -1362,6 +1432,7 @@
                 const text = await generateGeminiText(prompt);
                 addChatMessage('ai', text);
             } catch (error) {
+                console.error("Chat Error:", error);
                 addChatMessage('ai', `❌ <b>เกิดข้อผิดพลาด:</b> ${error.message} <br><span class="text-xs text-slate-500 mt-1 block">ลองกดถามใหม่อีกครั้ง หรือรีเฟรชหน้าเว็บครับ 😅</span>`);
             } finally {
                 isWaitingForAI = false;
@@ -1370,30 +1441,54 @@
 
         async function generateGeminiText(prompt) {
             const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } };
-            const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.5-flash-preview-09-2025", "gemini-pro"];
+            
+            if (!cachedModel) {
+                try {
+                    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+                    const res = await fetch(listUrl);
+                    const data = await res.json();
+                    
+                    if (data.models) {
+                        const validModels = data.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"));
+                        let selected = validModels.find(m => m.name.includes("flash")) || validModels.find(m => m.name.includes("pro")) || validModels[0];
+                        
+                        if (selected) {
+                            cachedModel = selected.name.replace("models/", ""); 
+                            console.log("✅ ระบบค้นพบและเชื่อมต่อ AI รุ่น:", cachedModel);
+                        } else {
+                            throw new Error("ไม่พบโมเดลที่รองรับใน API Key นี้");
+                        }
+                    } else {
+                        throw new Error("ดึงข้อมูลโมเดลไม่ได้: " + (data.error?.message || "Unknown"));
+                    }
+                } catch (err) {
+                    throw new Error("เชื่อมต่อระบบ AI อัตโนมัติไม่สำเร็จ: " + err.message);
+                }
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${cachedModel}:generateContent?key=${GEMINI_API_KEY}`;
             let lastError = null;
 
-            for (let model of modelsToTry) {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+            for (let attempt = 0; attempt < 3; attempt++) {
                 try {
                     const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                     const data = await response.json();
+                    
                     if (response.ok && data.candidates && data.candidates[0].content) {
                         return data.candidates[0].content.parts[0].text;
                     } else if (!response.ok) {
-                        lastError = new Error(`[${model}] ${data.error?.message}`);
-                        continue; 
+                        throw new Error(`[${cachedModel}] ${data.error?.message || 'Unknown Error'}`);
                     }
                 } catch (error) {
                     lastError = error;
+                    await new Promise(res => setTimeout(res, 2000)); 
                 }
             }
+            
+            cachedModel = null; 
             throw lastError || new Error("รูปแบบข้อมูลจาก AI ไม่ถูกต้อง");
         }
 
-        // ==========================================
-        // TEACHER DASHBOARD LOGIC
-        // ==========================================
         async function refreshDashboardData() {
             await fetchStudents();
             updateRoomFilterOptions();
@@ -1623,7 +1718,10 @@
                     <tr class="hover:bg-slate-50 transition group">
                         <td class="p-3 border-b text-slate-600">${u.room || '-'}</td>
                         <td class="p-3 border-b text-slate-600 text-center">${u.number || '-'}</td>
-                        <td class="p-3 border-b"><div class="text-slate-500 text-xs">${u.id}</div><div class="font-medium text-slate-800">${u.name}</div></td>
+                        <td class="p-3 border-b cursor-pointer group-hover:bg-slate-100 transition rounded-lg" onclick="openTeacherStudentDetails('${u.id}')" title="คลิกเพื่อดูรายละเอียดการอ่าน">
+                            <div class="text-slate-500 text-xs">${u.id}</div>
+                            <div class="font-medium text-indigo-600 hover:underline flex items-center gap-1">${u.name} <i data-lucide="external-link" class="w-3 h-3"></i></div>
+                        </td>
                         <td class="p-3 border-b text-center ${warningStyle}">${warnings}</td>
                         <td class="p-3 border-b font-bold text-slate-700 text-center">${reads}</td>
                         <td class="p-3 border-b font-bold text-indigo-600 text-center">${avg}</td>
@@ -1914,9 +2012,6 @@
             }
         }
 
-        // ==========================================
-        // TEACHER STORIES MANAGEMENT LOGIC
-        // ==========================================
         async function extractStoriesMock(e) {
             e.preventDefault();
             const btn = document.getElementById('extract-btn');
